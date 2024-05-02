@@ -17,6 +17,9 @@ class IRC(Connector):
     _recv_thread: object
     _send_thread: object
 
+    def gdo_has_channels(self) -> bool:
+        return True
+
     def gdo_connect(self) -> bool:
         try:
             url = self._server.get_url()
