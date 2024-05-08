@@ -1,6 +1,7 @@
 import socket
 import ssl
 
+from gdo.base.Exceptions import GDOException
 from gdo.base.Logger import Logger
 from gdo.core.Connector import Connector
 from gdo.core.GDO_Server import GDO_Server
@@ -26,6 +27,8 @@ class IRC(Connector):
             host = url['host']
             port = url['port']
 
+            Logger.debug(f"Connecting to {url['raw']}")
+
             # Create a socket object
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -39,18 +42,23 @@ class IRC(Connector):
                 sock.connect((host, port))
                 self._sock = sock
 
+            self._connected = True
+
             # TODO: check if self._sock is connected
             self._recv_thread = IRCReader(self)
             self._recv_thread.daemon = True
             self._recv_thread.start()
 
             self._send_thread = IRCWriter(self)
-
+            self.send_user_cmd()
 
             # TODO: Now create a reader thread with blocking socket
         except GDOException as ex:
             Logger.exception(ex)
             return False
+
+        Logger.debug('connected!')
+
         return True
 
     def gdo_disconnect(self, quit_message: str):
@@ -73,4 +81,9 @@ class IRC(Connector):
     def process_message(self, irc_text):
         Logger.debug(irc_text)
         pass
+
+    def send_user_cmd(self):
+
+        nickname = self._server.cfg_
+        self._send_thread.write(f"USER {nickname} 0 * :{nickname}@pygdo.com")
 

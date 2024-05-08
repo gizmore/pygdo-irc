@@ -8,7 +8,7 @@ from gdo.base.Exceptions import GDOParamError
 from gdo.base.ModuleLoader import ModuleLoader
 from gdo.core.GDO_Server import GDO_Server
 from gdo.core.method.launch import launch
-from gdotest.TestUtil import reinstall_module, cli_plug, get_gizmore
+from gdotest.TestUtil import reinstall_module, cli_plug, get_gizmore, install_module
 
 
 class IRCTestCase(unittest.TestCase):
@@ -22,7 +22,7 @@ class IRCTestCase(unittest.TestCase):
         loader = ModuleLoader.instance()
         loader.load_modules_db(True)
         loader.init_modules()
-        reinstall_module('irc')
+        install_module('irc')
         Application.init_cli()
         loader.init_cli()
         if IRCTestCase.IRC_SERVER is None:
@@ -48,7 +48,7 @@ class IRCTestCase(unittest.TestCase):
         server = IRCTestCase.IRC_SERVER
         method = launch()
         method.mainloop_step_server(server)
-        time.sleep(5)  # sleep 5 seconds to let irc connect
+        time.sleep(15)  # sleep 5 seconds to let irc connect
         server.get_connector().disconnect('Disconnect automatically')
 
 
