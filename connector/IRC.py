@@ -1,10 +1,14 @@
 import socket
 import ssl
 
+from gdo.base.Application import Application
 from gdo.base.Exceptions import GDOException
 from gdo.base.Logger import Logger
+from gdo.base.Message import Message
+from gdo.base.Util import Random
 from gdo.core.Connector import Connector
-from gdo.core.GDO_Server import GDO_Server
+from gdo.core.GDO_Channel import GDO_Channel
+from gdo.core.GDO_User import GDO_User
 from gdo.irc.connector.IRCReader import IRCReader
 from gdo.irc.connector.IRCWriter import IRCWriter
 
@@ -14,18 +18,21 @@ class IRC(Connector):
     IRC Connector for the Dog Chatbot
     """
 
-    _sock: object
+    _socket: object
     _recv_thread: object
     _send_thread: object
+    _own_nick: str
 
     def gdo_has_channels(self) -> bool:
         return True
 
-    def gdo_connect(self) -> bool:
+    async def gdo_connect(self):
         try:
             url = self._server.get_url()
             host = url['host']
             port = url['port']
+
+            self._own_nick = self.get_nickname()
 
             Logger.debug(f"Connecting to {url['raw']}")
 
@@ -37,29 +44,32 @@ class IRC(Connector):
             if url['tls']:
                 ssl_sock = context.wrap_socket(sock, server_hostname=host)
                 ssl_sock.connect((host, port))
-                self._sock = ssl_sock
+                self._socket = ssl_sock
             else:
                 sock.connect((host, port))
-                self._sock = sock
+                self._socket = sock
 
             self._connected = True
 
-            # TODO: check if self._sock is connected
             self._recv_thread = IRCReader(self)
             self._recv_thread.daemon = True
             self._recv_thread.start()
 
             self._send_thread = IRCWriter(self)
+            self._send_thread.daemon = True
+            self._send_thread.start()
+
             self.send_user_cmd()
 
-            # TODO: Now create a reader thread with blocking socket
+            Logger.debug('connected!')
+
+            return self
+
         except GDOException as ex:
             Logger.exception(ex)
-            return False
+            self._connected = False
 
-        Logger.debug('connected!')
-
-        return True
+        return self
 
     def gdo_disconnect(self, quit_message: str):
         pass
@@ -69,7 +79,7 @@ class IRC(Connector):
         on a disconnect, stop and join all threads gracefully
         """
         if hasattr(self, '_sock'):
-            self._sock.close()
+            self._socket.close()
             delattr(self, '_sock')
         if hasattr(self, '_recv_thread'):
             self._recv_thread.join()
@@ -78,12 +88,95 @@ class IRC(Connector):
             self._send_thread.join()
             delattr(self, '_send_thread')
 
-    def process_message(self, irc_text):
-        Logger.debug(irc_text)
-        pass
+    #########
+    # Parse #
+    #########
+
+    def get_command(self, name: str):
+        from gdo.irc.module_irc import module_irc
+        try:
+            return module_irc.instance().get_method(f"CMD_{name}").env_server(self._server).env_channel(None).env_user(None).env_session(None)
+        except Exception as ex:
+            Logger.debug(f'Unknown IRC Command {name}')
+            return module_irc.instance().get_method("CMD_NA")
+
+    def process_message(self, message: str):
+        Logger.debug(message)
+        prefix, command, params = self.parse_message(message)
+
+        cmd = self.get_command(command)
+        cmd._irc_prefix = prefix
+        cmd._irc_params = params
+
+        cmd.gdo_execute()
+
+
+    def parse_message(self, message: str):
+        prefix = None
+        command = None
+        params = []
+
+        tokens = message.split(' ')
+
+        if tokens[0].startswith(':'):
+            prefix = tokens[0][1:]
+            tokens = tokens[1:]
+
+        command = tokens[0]
+        tokens = tokens[1:]
+
+        if len(tokens) > 0 and tokens[0].startswith(':'):
+            params.append(' '.join(tokens)[1:])
+        else:
+            while len(tokens) > 0:
+                if tokens[0].startswith(':'):
+                    params.append(' '.join(tokens)[1:])
+                    break
+                else:
+                    params.append(tokens[0])
+                    tokens = tokens[1:]
+
+        return prefix, command, params
+
+    ###########
+    # Connect #
+    ###########
+
+    def get_nickname(self):
+        return self._server.get_username()
 
     def send_user_cmd(self):
+        nickname = self.get_nickname()
+        self.send_raw(f"USER {nickname} {nickname} {nickname} :{nickname}")
+        self.send_raw(f"NICK {nickname}")
 
-        nickname = self._server.cfg_
-        self._send_thread.write(f"USER {nickname} 0 * :{nickname}@pygdo.com")
+    def send_nick_cmd(self):
+        nickname = f"{self.get_nickname()}_{Random.mrand(1, 99):02d}"
+        self._own_nick = nickname
+        self.send_raw(f"NICK {nickname}")
 
+    def send_quit(self, message: str):
+        self.send_raw(f"QUIT {message}")
+
+    ########
+    # Send #
+    ########
+    def send_raw(self, message: str):
+        self._send_thread.write_now(message)
+
+    async def send_to_channel(self, message: Message):
+        channel = message._env_channel
+        server = message._env_server
+        user = message._env_user
+        text = message._result
+        Logger.debug(f"{server.get_name()} >> {channel.render_name()} >> {text}")
+        prefix = f'PRIVMSG {channel.get_name()} :{user.render_name()}: '
+        self._send_thread.write(prefix, message)
+
+    async def send_to_user(self, message: Message):
+        server = message._env_server
+        user = message._env_user
+        text = message._result
+        Logger.debug(f"{server.get_name()} >> {user.render_name()} >> {text}")
+        prefix = f'PRIVMSG {user.get_name()} :'
+        self._send_thread.write(prefix, message)

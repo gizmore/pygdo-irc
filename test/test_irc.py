@@ -51,6 +51,13 @@ class IRCTestCase(unittest.TestCase):
         time.sleep(15)  # sleep 5 seconds to let irc connect
         server.get_connector().disconnect('Disconnect automatically')
 
+    def test_04_help(self):
+        from gdo.core.method.help import help
+        server = IRCTestCase.IRC_SERVER
+        user = get_gizmore()
+        out = help().env_server(server).env_user(user).gdo_execute().render_irc()
+        self.assertIn('Core', out, 'IRC Help does not work.')
+
 
 if __name__ == '__main__':
     unittest.main()
