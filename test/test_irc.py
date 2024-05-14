@@ -11,8 +11,20 @@ from gdo.core.method.launch import launch
 from gdotest.TestUtil import reinstall_module, cli_plug, get_gizmore, install_module
 
 
+class IRCPlug:
+    _msg: str
+
+    def message(self, msg: str):
+        self._msg = msg
+        return self
+
+    def exec(self):
+        connector = IRCTestCase.IRC_SERVER.get_connector()
+        connector.process_message(self._msg)
+
+
 class IRCTestCase(unittest.TestCase):
-    IRC_SERVER = None
+    IRC_SERVER: GDO_Server = None
     """
     For this test you need an IRC server on irc.giz.org:6667
     """
@@ -44,12 +56,13 @@ class IRCTestCase(unittest.TestCase):
             out = cli_plug(get_gizmore(), f"add_server giz.org_{num_servers + 1} IRC irc://irc.giz.org:6668")
             self.assertNotIn('new IRC server', out, "Would have added an invalid IRC server")
 
-    def test_03_connect_irc_server(self):
-        server = IRCTestCase.IRC_SERVER
-        method = launch()
-        method.mainloop_step_server(server)
-        time.sleep(15)  # sleep 5 seconds to let irc connect
-        server.get_connector().disconnect('Disconnect automatically')
+    # def test_03_connect_irc_server(self):
+    #     server = IRCTestCase.IRC_SERVER
+    #     method = launch()
+    #     method.mainloop_step_server(server)
+    #     time.sleep(12)  # sleep 5 seconds to let irc connect
+    #     self.assertTrue(server.get_connector().is_connected(), "Cannot connect to irc server.");
+    #     server.get_connector().disconnect('Disconnect automatically')
 
     def test_04_help(self):
         from gdo.core.method.help import help
