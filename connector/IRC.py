@@ -26,7 +26,7 @@ class IRC(Connector):
     def gdo_has_channels(self) -> bool:
         return True
 
-    async def gdo_connect(self):
+    def gdo_connect(self):
         try:
             url = self._server.get_url()
             host = url['host']
@@ -63,13 +63,9 @@ class IRC(Connector):
 
             Logger.debug('connected!')
 
-            return self
-
         except GDOException as ex:
             Logger.exception(ex)
             self._connected = False
-
-        return self
 
     def gdo_disconnect(self, quit_message: str):
         pass
