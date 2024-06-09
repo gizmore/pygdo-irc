@@ -2,6 +2,7 @@ import asyncio
 
 from gdo.base.Application import Application
 from gdo.base.GDT import GDT
+from gdo.base.Logger import Logger
 from gdo.base.Message import Message
 from gdo.base.Render import Mode
 from gdo.core.GDO_Session import GDO_Session
@@ -20,8 +21,11 @@ class CMD_PRIVMSG(IRCCommand):
         return self.get_config_server_value('max_msg_len')
 
     def gdo_execute(self):
+        Application.mode(Mode.IRC)
+        Application.fresh_page()
         line = self._irc_params[1]
         self._env_user = self.irc_user(self._irc_prefix)
+
         self._env_session = GDO_Session.for_user(self._env_user)
         rec_name = self._irc_params[0]
         trigger = self._env_server.get_trigger()
@@ -29,7 +33,7 @@ class CMD_PRIVMSG(IRCCommand):
             self._env_channel = self.irc_channel(rec_name)
             trigger = self._env_channel.get_trigger()
 
-        message = Message(line, Mode.IRC).env_copy(self)
+        message = Message(line, Mode.IRC).env_copy(self).env_mode(Mode.IRC)
         Application.EVENTS.publish('new_message', message)
 
         if line.startswith(trigger):
@@ -38,6 +42,7 @@ class CMD_PRIVMSG(IRCCommand):
             try:
                 asyncio.run(message.execute())
             except Exception as ex:
+                Logger.exception(ex)
                 message._result = Application.get_page()._top_bar.render_irc()
                 message._result += str(ex)
                 asyncio.run(message.deliver())

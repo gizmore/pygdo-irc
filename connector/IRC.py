@@ -5,6 +5,7 @@ from gdo.base.Application import Application
 from gdo.base.Exceptions import GDOException
 from gdo.base.Logger import Logger
 from gdo.base.Message import Message
+from gdo.base.Render import Mode
 from gdo.base.Util import Random
 from gdo.core.Connector import Connector
 from gdo.core.GDO_Channel import GDO_Channel
@@ -22,6 +23,9 @@ class IRC(Connector):
     _recv_thread: object
     _send_thread: object
     _own_nick: str
+
+    def get_render_mode(self) -> Mode:
+        return Mode.IRC
 
     def gdo_has_channels(self) -> bool:
         return True
@@ -106,7 +110,6 @@ class IRC(Connector):
 
         cmd.gdo_execute()
 
-
     def parse_message(self, message: str):
         prefix = None
         command = None
@@ -160,7 +163,7 @@ class IRC(Connector):
     def send_raw(self, message: str):
         self._send_thread.write_now(message)
 
-    async def send_to_channel(self, message: Message):
+    async def gdo_send_to_channel(self, message: Message):
         channel = message._env_channel
         server = message._env_server
         user = message._env_user
@@ -169,7 +172,7 @@ class IRC(Connector):
         prefix = f'PRIVMSG {channel.get_name()} :{user.render_name()}: '
         self._send_thread.write(prefix, message)
 
-    async def send_to_user(self, message: Message):
+    async def gdo_send_to_user(self, message: Message):
         server = message._env_server
         user = message._env_user
         text = message._result
