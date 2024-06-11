@@ -11,6 +11,9 @@ class IRCCommand(Method):
     def gdo_trigger(self) -> str:
         return ''
 
+    def get_server_id(self) -> str:
+        return self._env_server.get_id()
+
     def irc_connector(self) -> IRC:
         return self._env_server.get_connector()
 

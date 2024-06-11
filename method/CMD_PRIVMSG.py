@@ -29,16 +29,16 @@ class CMD_PRIVMSG(IRCCommand):
         self._env_session = GDO_Session.for_user(self._env_user)
         rec_name = self._irc_params[0]
         trigger = self._env_server.get_trigger()
-        if rec_name[0] == '#':
+        if rec_name.startswith('#'):
             self._env_channel = self.irc_channel(rec_name)
             trigger = self._env_channel.get_trigger()
 
         message = Message(line, Mode.IRC).env_copy(self).env_mode(Mode.IRC)
-        Application.EVENTS.publish('new_message', message)
+        # message._message = line
+        Application.EVENTS.publish('new_message', message.message_copy())
 
         if line.startswith(trigger):
-            line = line[1:]
-            message._message = line
+            message._message = line[1:]
             try:
                 asyncio.run(message.execute())
             except Exception as ex:

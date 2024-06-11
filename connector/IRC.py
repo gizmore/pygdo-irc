@@ -1,15 +1,13 @@
 import socket
 import ssl
 
-from gdo.base.Application import Application
 from gdo.base.Exceptions import GDOException
 from gdo.base.Logger import Logger
 from gdo.base.Message import Message
+from gdo.base.Method import Method
 from gdo.base.Render import Mode
 from gdo.base.Util import Random
 from gdo.core.Connector import Connector
-from gdo.core.GDO_Channel import GDO_Channel
-from gdo.core.GDO_User import GDO_User
 from gdo.irc.connector.IRCReader import IRCReader
 from gdo.irc.connector.IRCWriter import IRCWriter
 
@@ -23,6 +21,13 @@ class IRC(Connector):
     _recv_thread: object
     _send_thread: object
     _own_nick: str
+
+    def __init__(self):
+        super().__init__()
+        self._socket = None
+        self._recv_thread = None
+        self._send_thread = None
+        self._own_nick = 'Dog'
 
     def get_render_mode(self) -> Mode:
         return Mode.IRC
@@ -64,6 +69,7 @@ class IRC(Connector):
             self._send_thread.start()
 
             self.send_user_cmd()
+            # Application.EVENTS.subscribe_once(f"irc{self._server.get_id()}_notice", self.send_user_cmd)
 
             Logger.debug('connected!')
 
@@ -144,7 +150,7 @@ class IRC(Connector):
     def get_nickname(self):
         return self._server.get_username()
 
-    def send_user_cmd(self):
+    def send_user_cmd(self, stub: Method = None):
         nickname = self.get_nickname()
         self.send_raw(f"USER {nickname} {nickname} {nickname} :{nickname}")
         self.send_raw(f"NICK {nickname}")
@@ -170,7 +176,10 @@ class IRC(Connector):
         text = message._result
         Logger.debug(f"{server.get_name()} >> {channel.render_name()} >> {text}")
         prefix = f'PRIVMSG {channel.get_name()} :{user.render_name()}: '
-        self._send_thread.write(prefix, message)
+        if self._send_thread:
+            self._send_thread.write(prefix, message)
+        else:
+            print(prefix, text)
 
     async def gdo_send_to_user(self, message: Message):
         server = message._env_server
@@ -178,4 +187,7 @@ class IRC(Connector):
         text = message._result
         Logger.debug(f"{server.get_name()} >> {user.render_name()} >> {text}")
         prefix = f'PRIVMSG {user.get_name()} :'
-        self._send_thread.write(prefix, message)
+        if self._send_thread:
+            self._send_thread.write(prefix, message)
+        else:
+            print(prefix, text)
