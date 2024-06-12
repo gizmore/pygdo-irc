@@ -175,7 +175,7 @@ class IRC(Connector):
         user = message._env_user
         text = message._result
         Logger.debug(f"{server.get_name()} >> {channel.render_name()} >> {text}")
-        prefix = f'PRIVMSG {channel.get_name()} :{user.render_name()}: '
+        prefix = f'PRIVMSG {channel.get_name()} :'
         if self._send_thread:
             self._send_thread.write(prefix, message)
         else:

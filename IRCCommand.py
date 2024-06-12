@@ -23,3 +23,7 @@ class IRCCommand(Method):
 
     def irc_channel(self, name: str):
         return self._env_server.get_or_create_channel(name)
+
+    def is_own_user(self):
+        return self._env_user.get_name() == self.irc_connector()._own_nick
+

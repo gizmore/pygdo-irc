@@ -16,16 +16,19 @@ class IRCReader(Thread):
         # Logger.debug('New IRC reader')
 
     def run(self):
-        try:
-            # Logger.debug("Starting IRC reader")
-            self.name = f"IRC-Reader({self._connector._server.get_name()})"
-            super().run()
-            Application.mode(Mode.IRC)
-            while self._connector.is_connected() and Application.RUNNING:
-                # Logger.debug("reading")
+        # try:
+        # Logger.debug("Starting IRC reader")
+        self.name = f"IRC-Reader({self._connector._server.get_name()})"
+        super().run()
+        Application.mode(Mode.IRC)
+        while self._connector.is_connected() and Application.RUNNING:
+            # Logger.debug("reading")
+            try:
                 self._connector.process_message(self.read_irc_line())
-        except Exception as e:
-            Logger.exception(e)
+            except Exception as ex:
+                Logger.exception(ex)
+        # except Exception as e:
+        #     Logger.exception(e)
 
     def read_irc_line(self):
         sock = self._connector._socket

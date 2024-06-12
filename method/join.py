@@ -19,12 +19,23 @@ class join(IRCCommand):
 
     def gdo_method_config_channel(self) -> [GDT]:
         return [
-            GDT_Bool('auto_join').initial('0'),
+            GDT_Bool('auto_join'),
         ]
 
     def gdo_execute(self):
         name = self.param_val('channel')
-        channel = self._env_server.get_or_create_channel(name)
+        # channel = self._env_server.get_or_create_channel(name)
+        self.msg('msg_irc_join_channel', [name])
         self.irc_connector().send_raw(f"JOIN {name}")
-        self.save_config_channel('auto_join', '1')
-        return self.reply('msg_irc_join_channel', [name])
+        return self.empty()
+
+    def on_bot_joined(self):
+        state = self.get_config_channel_val('auto_join')
+        print(state)
+        if not state:
+            self.save_config_channel('auto_join', '1')
+
+    def on_connected(self):
+        channels = self.channels_with_setting('auto_join', '1')
+        for channel in channels:
+            self.irc_connector().send_raw(f"JOIN {channel.get_name()}")
