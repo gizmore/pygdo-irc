@@ -172,7 +172,6 @@ class IRC(Connector):
     async def gdo_send_to_channel(self, message: Message):
         channel = message._env_channel
         server = message._env_server
-        user = message._env_user
         text = message._result
         Logger.debug(f"{server.get_name()} >> {channel.render_name()} >> {text}")
         prefix = f'PRIVMSG {channel.get_name()} :'
