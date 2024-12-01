@@ -1,5 +1,7 @@
+import asyncio
 import socket
 import ssl
+from asyncore import loop
 
 from gdo.base.Exceptions import GDOException
 from gdo.base.Logger import Logger
@@ -20,6 +22,7 @@ class IRC(Connector):
     _socket: object
     _recv_thread: object
     _send_thread: object
+    _event_loop: loop
     _own_nick: str
 
     def __init__(self):
@@ -60,6 +63,8 @@ class IRC(Connector):
 
             self._connected = True
 
+            self._event_loop = asyncio.get_event_loop()
+
             self._recv_thread = IRCReader(self)
             self._recv_thread.daemon = True
             self._recv_thread.start()
@@ -69,7 +74,6 @@ class IRC(Connector):
             self._send_thread.start()
 
             self.send_user_cmd()
-            # Application.EVENTS.subscribe_once(f"irc{self._server.get_id()}_notice", self.send_user_cmd)
 
             Logger.debug('connected!')
 

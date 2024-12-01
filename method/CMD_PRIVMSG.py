@@ -37,14 +37,16 @@ class CMD_PRIVMSG(IRCCommand):
         # message._message = line
         Application.EVENTS.publish('new_message', message.message_copy())
 
+        event_loop = self._env_server.get_connector()._event_loop
+
         if line.startswith(trigger):
             message._message = line[1:]
             try:
-                asyncio.run(message.execute())
+                asyncio.ensure_future(message.execute(), loop=event_loop)
             except Exception as ex:
                 Logger.exception(ex)
                 message._result = Application.get_page()._top_bar.render_irc()
                 message._result += str(ex)
-                asyncio.run(message.deliver())
+                asyncio.ensure_future(message.deliver(), loop=event_loop)
 
         return self.empty()
