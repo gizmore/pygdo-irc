@@ -56,20 +56,21 @@ class IRCTestCase(unittest.TestCase):
             out = cli_plug(web_gizmore(), f"$add_server giz.org_{num_servers + 1} irc irc://irc.giz.org:6668")
             self.assertNotIn('new IRC server', out, "Would have added an invalid IRC server")
 
-    # def test_03_connect_irc_server(self):
-    #     server = IRCTestCase.IRC_SERVER
-    #     method = launch()
-    #     method.mainloop_step_server(server)
-    #     time.sleep(12)  # sleep 5 seconds to let irc connect
-    #     self.assertTrue(server.get_connector().is_connected(), "Cannot connect to irc server.");
-    #     server.get_connector().disconnect('Disconnect automatically')
-
-    def test_04_help(self):
+    def test_03_help_rendering(self):
         from gdo.core.method.help import help
         server = IRCTestCase.IRC_SERVER
         user = web_gizmore()
         out = help().env_server(server).env_user(user).gdo_execute().render_irc()
         self.assertIn('Core', out, 'IRC Help does not work.')
+
+    def test_04_connect_irc_server(self):
+        server = IRCTestCase.IRC_SERVER
+        method = launch()
+        method.mainloop_step_server(server)
+        time.sleep(12)  # sleep 5 seconds to let irc connect
+        self.assertTrue(server.get_connector().is_connected(), "Cannot connect to irc server.")
+        server.get_connector().disconnect('Disconnect automatically')
+
 
 
 if __name__ == '__main__':
