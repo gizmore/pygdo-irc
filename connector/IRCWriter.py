@@ -49,6 +49,9 @@ class IRCWriter(Thread):
 
     def write_now(self, message: str):
         Logger.debug(f"IRC >> {message}")
-        sock = self._connector._socket
-        message += "\n"
-        sock.send(message.encode('utf-8'))
+        try:
+            message += "\n"
+            self._connector._socket.send(message.encode('utf-8'))
+        except Exception as ex:
+            Logger.exception(ex)
+            self._connector.disconnect(str(ex))

@@ -10,6 +10,7 @@ from gdo.base.Method import Method
 from gdo.base.Render import Mode
 from gdo.base.Util import Random
 from gdo.core.Connector import Connector
+from gdo.core.GDO_User import GDO_User
 from gdo.irc.connector.IRCReader import IRCReader
 from gdo.irc.connector.IRCWriter import IRCWriter
 
@@ -24,6 +25,7 @@ class IRC(Connector):
     _send_thread: object
     _event_loop: loop
     _own_nick: str
+    _own_user: GDO_User
 
     def __init__(self):
         super().__init__()
@@ -194,3 +196,11 @@ class IRC(Connector):
             self._send_thread.write(prefix, message)
         else:
             print(prefix, text)
+
+    def gdo_get_dog_user(self) -> GDO_User:
+        return self._own_user
+
+    def setup_dog_user(self, dog_name: str) -> GDO_User:
+        self._own_nick = dog_name
+        self._own_user = self._server.get_or_create_user(dog_name, dog_name)
+        return self._own_user
