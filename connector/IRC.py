@@ -1,7 +1,6 @@
 import asyncio
 import socket
 import ssl
-from asyncore import loop
 
 from gdo.base.Exceptions import GDOException
 from gdo.base.Logger import Logger
@@ -23,7 +22,7 @@ class IRC(Connector):
     _socket: object
     _recv_thread: object
     _send_thread: object
-    _event_loop: loop
+    _event_loop: object
     _own_nick: str
     _own_user: GDO_User
 
