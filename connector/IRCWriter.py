@@ -10,7 +10,7 @@ from gdo.irc.connector.IRCSendQueue import IRCSendQueue
 
 class IRCWriter(Thread):
     """
-    Thread class for receiving messages from the IRC server.
+    Thread class for sending messages to the IRC server.
     """
     _connector: 'IRC'
     _queue: IRCSendQueue
@@ -48,7 +48,7 @@ class IRCWriter(Thread):
                 self._queue.append(msg)
 
     def write_now(self, message: str):
-        Logger.debug(f"IRC >> {message}")
+        Logger.debug(f"{self._connector._server.get_name()} >> {message}")
         try:
             message += "\n"
             self._connector._socket.send(message.encode('utf-8'))

@@ -20,8 +20,8 @@ class IRC(Connector):
     """
 
     _socket: object
-    _recv_thread: object
-    _send_thread: object
+    _recv_thread: IRCReader
+    _send_thread: IRCWriter
     _event_loop: object
     _own_nick: str
     _own_user: GDO_User
@@ -44,15 +44,9 @@ class IRC(Connector):
             url = self._server.get_url()
             host = url['host']
             port = url['port']
-
             self._own_nick = self.get_nickname()
-
             Logger.debug(f"Connecting to {url['raw']}")
-
-            # Create a socket object
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-            # Wrap the socket with SSL/TLS
             context = ssl.create_default_context()
             if url['tls']:
                 ssl_sock = context.wrap_socket(sock, server_hostname=host)
@@ -80,7 +74,7 @@ class IRC(Connector):
 
         except GDOException as ex:
             Logger.exception(ex)
-            self._connected = False
+            self.gdo_disconnected()\
 
     def gdo_disconnect(self, quit_message: str):
         pass
@@ -89,6 +83,7 @@ class IRC(Connector):
         """
         on a disconnect, stop and join all threads gracefully
         """
+        self._connected = False
         if hasattr(self, '_sock'):
             self._socket.close()
             delattr(self, '_sock')
@@ -178,23 +173,21 @@ class IRC(Connector):
         channel = message._env_channel
         server = message._env_server
         text = message._result
-        Logger.debug(f"{server.get_name()} >> {channel.render_name()} >> {text}")
-        prefix = f'PRIVMSG {channel.get_name()} :'
-        if self._send_thread:
-            self._send_thread.write(prefix, message)
-        else:
-            print(prefix, text)
+        for line in text.splitlines():
+            msg = message.message_copy().result(line)
+            Logger.debug(f"{server.get_name()} >> {channel.render_name()} >> {line}")
+            prefix = f'PRIVMSG {channel.get_name()} :'
+            self._send_thread.write(prefix, msg)
 
     async def gdo_send_to_user(self, message: Message):
         server = message._env_server
         user = message._env_user
         text = message._result
-        Logger.debug(f"{server.get_name()} >> {user.render_name()} >> {text}")
-        prefix = f'PRIVMSG {user.get_name()} :'
-        if self._send_thread:
-            self._send_thread.write(prefix, message)
-        else:
-            print(prefix, text)
+        for line in text.splitlines():
+            msg = message.message_copy().result(line)
+            Logger.debug(f"{server.get_name()} >> {user.render_name()} >> {line}")
+            prefix = f'PRIVMSG {user.get_name()} :'
+            self._send_thread.write(prefix, msg)
 
     def gdo_get_dog_user(self) -> GDO_User:
         return self._own_user

@@ -21,7 +21,6 @@ class CMD_PRIVMSG(IRCCommand):
 
     def gdo_execute(self):
         Application.mode(Mode.IRC)
-        Application.fresh_page()
         line = self._irc_params[1]
         self._env_user = self.irc_user(self._irc_prefix)
 
