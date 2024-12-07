@@ -72,9 +72,9 @@ class IRC(Connector):
 
             Logger.debug('connected!')
 
-        except GDOException as ex:
+        except Exception as ex:
             Logger.exception(ex)
-            self.gdo_disconnected()\
+            self.connect_failed()
 
     def gdo_disconnect(self, quit_message: str):
         pass
@@ -83,7 +83,7 @@ class IRC(Connector):
         """
         on a disconnect, stop and join all threads gracefully
         """
-        self._connected = False
+        self.disconnected()
         if hasattr(self, '_sock'):
             self._socket.close()
             delattr(self, '_sock')
