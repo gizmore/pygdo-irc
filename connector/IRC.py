@@ -101,7 +101,7 @@ class IRC(Connector):
     def get_command(self, name: str):
         from gdo.irc.module_irc import module_irc
         try:
-            return module_irc.instance().get_method(f"CMD_{name}").env_server(self._server).env_channel(None).env_user(None).env_session(None)
+            return module_irc.instance().get_method(f"CMD_{name}").env_mode(Mode.IRC).env_server(self._server).env_channel(None).env_user(None).env_session(None)
         except Exception as ex:
             Logger.debug(f'Unknown IRC Command {name}')
             return module_irc.instance().get_method("CMD_NA")
