@@ -98,7 +98,7 @@ class IRC(Connector):
     # Parse #
     #########
 
-    def get_command(self, name: str):
+    def get_command(self, name: str) -> Method:
         from gdo.irc.module_irc import module_irc
         try:
             return module_irc.instance().get_method(f"CMD_{name}").env_mode(Mode.IRC).env_server(self._server).env_channel(None).env_user(None).env_session(None)
@@ -111,6 +111,7 @@ class IRC(Connector):
         prefix, command, params = self.parse_message(message)
 
         cmd = self.get_command(command)
+        cmd._message = message
         cmd._irc_prefix = prefix
         cmd._irc_params = params
 
@@ -176,7 +177,7 @@ class IRC(Connector):
         for line in text.splitlines():
             msg = message.message_copy().result(line)
             Logger.debug(f"{server.get_name()} >> {channel.render_name()} >> {line}")
-            prefix = f'PRIVMSG {channel.get_name()} :'
+            prefix = f'PRIVMSG {channel.get_name()} :{message._env_user.get_name()}: '
             self._send_thread.write(prefix, msg)
 
     async def gdo_send_to_user(self, message: Message):
