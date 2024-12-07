@@ -31,7 +31,6 @@ class join(IRCCommand):
 
     def on_bot_joined(self):
         state = self.get_config_channel_val('auto_join')
-        print(state)
         if not state:
             self.save_config_channel('auto_join', '1')
 
