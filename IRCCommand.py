@@ -31,4 +31,3 @@ class IRCCommand(Method):
 
     def is_own_user(self):
         return self._env_user.get_name() == self.irc_connector()._own_nick
-
