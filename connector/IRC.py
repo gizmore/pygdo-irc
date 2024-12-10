@@ -179,7 +179,7 @@ class IRC(Connector):
         text = message._result
         for line in text.splitlines():
             msg = message.message_copy().result(line)
-            prefix = f'{message._env_user.get_name()}: ' if not message._thread_user else ''
+            prefix = f'{message._env_user.render_name()}: ' if not message._thread_user else ''
             Logger.debug(f"{server.get_name()} >> {channel.render_name()} >> {line}")
             prefix = f'PRIVMSG {channel.get_name()} :{prefix}'
             self._send_thread.write(prefix, msg)
