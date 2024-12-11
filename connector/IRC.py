@@ -10,6 +10,7 @@ from gdo.base.Render import Mode
 from gdo.base.Util import Random
 from gdo.core.Connector import Connector
 from gdo.core.GDO_User import GDO_User
+from gdo.core.GDT_UserType import GDT_UserType
 from gdo.irc.connector.IRCReader import IRCReader
 from gdo.irc.connector.IRCWriter import IRCWriter
 
@@ -32,6 +33,7 @@ class IRC(Connector):
         self._recv_thread = None
         self._send_thread = None
         self._own_nick = 'Dog'
+        self._own_user = None
 
     def get_render_mode(self) -> Mode:
         return Mode.IRC
@@ -200,4 +202,5 @@ class IRC(Connector):
     def setup_dog_user(self, dog_name: str) -> GDO_User:
         self._own_nick = dog_name
         self._own_user = self._server.get_or_create_user(dog_name, dog_name)
+        self._own_user.save_val('user_type', GDT_UserType.CHAPPY)
         return self._own_user
