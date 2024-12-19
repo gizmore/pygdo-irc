@@ -12,15 +12,18 @@ class IRCCommand(Method):
     def gdo_trigger(self) -> str:
         return ''
 
+    def gdo_connectors(self) -> str:
+        return "irc"
+
     def get_server_id(self) -> str:
         return self._env_server.get_id()
 
     def irc_connector(self) -> IRC:
         return self._env_server.get_connector()
 
-    def irc_user(self, prefix: str) -> GDO_User:
+    async def irc_user(self, prefix: str) -> GDO_User:
         username = Strings.substr_to(prefix, '!', prefix)
-        return self._env_server.get_or_create_user(username)
+        return await self._env_server.get_or_create_user(username)
 
     def irc_channel(self, name: str) -> GDO_Channel:
         return self._env_server.get_or_create_channel(name)

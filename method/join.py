@@ -12,7 +12,7 @@ class join(IRCCommand):
     def gdo_user_permission(self) -> str | None:
         return 'staff'
 
-    def gdo_parameters(self) -> [GDT]:
+    def gdo_parameters(self) -> list[GDT]:
         return [
             GDT_IRCChannel('channel').not_null(),
         ]
@@ -22,7 +22,7 @@ class join(IRCCommand):
             GDT_Bool('auto_join'),
         ]
 
-    def gdo_execute(self):
+    def gdo_execute(self) -> GDT:
         name = self.param_val('channel')
         # channel = self._env_server.get_or_create_channel(name)
         self.msg('msg_irc_join_channel', [name])

@@ -19,15 +19,14 @@ class CMD_PRIVMSG(IRCCommand):
     def get_max_msg_len(self) -> int:
         return self.get_config_server_value('max_msg_len')
 
-    def gdo_execute(self):
+    async def gdo_execute(self) -> GDT:
         Application.mode(Mode.IRC)
         line = self._irc_params[1]
-        self._env_user = self.irc_user(self._irc_prefix)
+        self._env_user = await self.irc_user(self._irc_prefix)
         self._env_session = GDO_Session.for_user(self._env_user)
         rec_name = self._irc_params[0]
         if rec_name.startswith('#'):
             self._env_channel = self.irc_channel(rec_name)
         message = Message(line, Mode.IRC).env_copy(self).env_mode(Mode.IRC)
-        event_loop = self._env_server.get_connector()._event_loop
-        asyncio.ensure_future(message.execute(), loop=event_loop)
+        await message.execute()
         return self.empty()

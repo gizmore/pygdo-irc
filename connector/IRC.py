@@ -1,6 +1,7 @@
 import asyncio
 import socket
 import ssl
+from asyncio import AbstractEventLoop
 
 from gdo.base.Exceptions import GDOException, GDOMethodException
 from gdo.base.Logger import Logger
@@ -23,7 +24,7 @@ class IRC(Connector):
     _socket: object
     _recv_thread: IRCReader
     _send_thread: IRCWriter
-    _event_loop: object
+    _event_loop: AbstractEventLoop
     _own_nick: str
     _own_user: GDO_User
 
@@ -81,7 +82,7 @@ class IRC(Connector):
             return False
 
     def gdo_disconnect(self, quit_message: str):
-        pass
+        self.send_raw(f'QUIT :{quit_message}')
 
     def gdo_disconnected(self):
         """
@@ -120,7 +121,9 @@ class IRC(Connector):
         cmd._irc_prefix = prefix
         cmd._irc_params = params
 
-        cmd.gdo_execute()
+        result = cmd.gdo_execute()
+        if asyncio.iscoroutine(result):
+            asyncio.ensure_future(result, loop=self._event_loop)
 
     def parse_message(self, message: str):
         prefix = None
@@ -181,7 +184,7 @@ class IRC(Connector):
         text = message._result
         for line in text.splitlines():
             msg = message.message_copy().result(line)
-            prefix = f'{message._env_user.render_name()}: ' if not message._thread_user else ''
+            prefix = message._reply_to # f'{message._env_user.render_name()}: ' if not message._thread_user else ''
             Logger.debug(f"{server.get_name()} >> {channel.render_name()} >> {line}")
             prefix = f'PRIVMSG {channel.get_name()} :{prefix}'
             self._send_thread.write(prefix, msg)
@@ -199,8 +202,8 @@ class IRC(Connector):
     def gdo_get_dog_user(self) -> GDO_User:
         return self._own_user
 
-    def setup_dog_user(self, dog_name: str) -> GDO_User:
+    async def setup_dog_user(self, dog_name: str) -> GDO_User:
         self._own_nick = dog_name
-        self._own_user = self._server.get_or_create_user(dog_name, dog_name)
+        self._own_user = await self._server.get_or_create_user(dog_name, dog_name)
         self._own_user.save_val('user_type', GDT_UserType.CHAPPY)
         return self._own_user
