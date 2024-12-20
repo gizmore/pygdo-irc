@@ -22,7 +22,7 @@ class join(IRCCommand):
             GDT_Bool('auto_join'),
         ]
 
-    def gdo_execute(self) -> GDT:
+    async def gdo_execute(self) -> GDT:
         name = self.param_val('channel')
         # channel = self._env_server.get_or_create_channel(name)
         self.msg('msg_irc_join_channel', [name])

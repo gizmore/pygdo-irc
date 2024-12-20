@@ -13,7 +13,7 @@ class part(IRCCommand):
     def gdo_user_permission(self) -> str | None:
         return 'staff'
 
-    def gdo_execute(self) -> GDT:
+    async def gdo_execute(self) -> GDT:
         name = self._env_channel.get_name()
         self.irc_connector().send_raw(f"PART {name}")
         return self.empty()

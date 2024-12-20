@@ -16,7 +16,7 @@ class irc_raw(IRCCommand):
             GDT_RestOfText('cmd'),
         ]
 
-    def gdo_execute(self) -> GDT:
+    async def gdo_execute(self) -> GDT:
         cmd = self.param_val('cmd')
         self.irc_connector().send_raw(cmd)
         return self.empty()

@@ -7,5 +7,5 @@ class CMD_366(IRCCommand):
     End of 353 user list.
     """
 
-    def gdo_execute(self) -> GDT:
+    async def gdo_execute(self) -> GDT:
         return self.empty()
