@@ -16,6 +16,6 @@ class motd(IRCCommand):
         self.save_config_server('irc_motd', self.__class__.MOTDS[sid])
         del self.MOTDS[sid]
 
-    def gdo_execute(self) -> GDT:
+    def gdo_execute(self):
         return self.reply('%s', [self.get_config_server_val('irc_motd')])
 

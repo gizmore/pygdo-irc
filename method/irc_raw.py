@@ -11,12 +11,12 @@ class irc_raw(IRCCommand):
     def gdo_user_permission(self) -> str | None:
         return 'admin'
 
-    def gdo_parameters(self) -> list[GDT]:
+    def gdo_parameters(self) -> [GDT]:
         return [
             GDT_RestOfText('cmd'),
         ]
 
-    def gdo_execute(self) -> GDT:
+    def gdo_execute(self):
         cmd = self.param_val('cmd')
         self.irc_connector().send_raw(cmd)
         return self.empty()
