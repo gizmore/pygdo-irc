@@ -13,10 +13,10 @@ class module_irc(GDO_Module):
     def __init__(self):
         super().__init__()
 
-    async def gdo_init(self):
+    def gdo_init(self):
         Connector.register(IRC)
 
-    async def gdo_subscribe_events(self):
+    def gdo_subscribe_events(self):
         Application.EVENTS.subscribe('irc_connected', self.on_connected)
         Application.EVENTS.subscribe('irc_joined', self.on_joined)
 

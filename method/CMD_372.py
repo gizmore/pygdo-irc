@@ -5,6 +5,6 @@ from gdo.irc.method.motd import motd
 
 class CMD_372(IRCCommand):
 
-    async def gdo_execute(self) -> GDT:
+    def gdo_execute(self) -> GDT:
         motd.MOTDS[self._env_server.get_id()] += self._irc_params[1] + "\n"
         return self.empty()

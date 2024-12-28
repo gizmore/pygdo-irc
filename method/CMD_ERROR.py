@@ -4,6 +4,6 @@ from gdo.irc.IRCCommand import IRCCommand
 
 class CMD_ERROR(IRCCommand):
 
-    async def gdo_execute(self) -> GDT:
+    def gdo_execute(self) -> GDT:
         self.irc_connector().disconnect(f"ERROR: {self._irc_params[0]}")
         return self.empty()
