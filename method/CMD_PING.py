@@ -1,5 +1,5 @@
 from gdo.irc.IRCCommand import IRCCommand
-from gdo.ui.GDT_HTML import GDT_HTML
+from gdo.message.GDT_HTML import GDT_HTML
 
 
 class CMD_PING(IRCCommand):
