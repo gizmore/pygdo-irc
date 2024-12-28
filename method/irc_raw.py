@@ -17,6 +17,6 @@ class irc_raw(IRCCommand):
         ]
 
     def gdo_execute(self):
-        cmd = self.param_val('cmd')
+        cmd = self.param_value('cmd')
         self.irc_connector().send_raw(cmd)
         return self.empty()
