@@ -1,6 +1,7 @@
 import asyncio
 import socket
 import ssl
+import time
 
 from gdo.base.Application import Application
 from gdo.base.Exceptions import GDOException, GDOMethodException
@@ -82,22 +83,23 @@ class IRC(Connector):
             return False
 
     def gdo_disconnect(self, quit_message: str):
-        pass
+        self.send_quit(quit_message)
+        time.sleep(0.5)
+        # self.gdo_disconnected()
 
     def gdo_disconnected(self):
         """
         on a disconnect, stop and join all threads gracefully
         """
-        self.disconnected()
         if hasattr(self, '_sock'):
             self._socket.close()
             delattr(self, '_sock')
-        if hasattr(self, '_recv_thread'):
-            self._recv_thread.join()
-            delattr(self, '_recv_thread')
-        if hasattr(self, '_send_thread'):
-            self._send_thread.join()
-            delattr(self, '_send_thread')
+        # if hasattr(self, '_recv_thread'):
+        #     self._recv_thread.join()
+        #     delattr(self, '_recv_thread')
+        # if hasattr(self, '_send_thread'):
+        #     self._send_thread.join()
+        #     delattr(self, '_send_thread')
 
     #########
     # Parse #
