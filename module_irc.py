@@ -5,6 +5,7 @@ from gdo.base.Message import Message
 from gdo.core.Connector import Connector
 from gdo.core.GDO_Channel import GDO_Channel
 from gdo.core.GDO_Server import GDO_Server
+from gdo.core.GDO_User import GDO_User
 from gdo.irc.connector.IRC import IRC
 
 
@@ -25,6 +26,6 @@ class module_irc(GDO_Module):
         from gdo.irc.method.join import join
         join().env_copy(message).on_connected()
 
-    def on_joined(self, channel: GDO_Channel, message: Message):
+    def on_joined(self, channel: GDO_Channel, user: GDO_User, message: Message):
         from gdo.irc.method.join import join
         join().env_copy(message).on_bot_joined()
