@@ -15,6 +15,13 @@ class module_irc(GDO_Module):
     def __init__(self):
         super().__init__()
 
+    def gdo_dependencies(self) -> list:
+        return [
+            'login',
+            'recovery',
+            'register',
+        ]
+
     def gdo_init(self):
         Connector.register(IRC)
 

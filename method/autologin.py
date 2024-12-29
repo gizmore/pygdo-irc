@@ -8,6 +8,9 @@ class autologin(Method):
 
     PROBES: dict[str, tuple[float, Message]] = {}
 
+    def gdo_trigger(self) -> str:
+        return ''
+
     def maybe_probe(self, user: GDO_User, original_message: Message):
         username = user.get_name()
         if username in self.__class__.PROBES:

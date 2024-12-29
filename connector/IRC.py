@@ -94,12 +94,6 @@ class IRC(Connector):
         if hasattr(self, '_sock'):
             self._socket.close()
             delattr(self, '_sock')
-        # if hasattr(self, '_recv_thread'):
-        #     self._recv_thread.join()
-        #     delattr(self, '_recv_thread')
-        # if hasattr(self, '_send_thread'):
-        #     self._send_thread.join()
-        #     delattr(self, '_send_thread')
 
     #########
     # Parse #
