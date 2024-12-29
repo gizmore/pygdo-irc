@@ -7,6 +7,7 @@ from gdo.core.GDO_Channel import GDO_Channel
 from gdo.core.GDO_Server import GDO_Server
 from gdo.core.GDO_User import GDO_User
 from gdo.irc.connector.IRC import IRC
+from gdo.irc.method.autologin import autologin
 
 
 class module_irc(GDO_Module):

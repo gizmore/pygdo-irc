@@ -7,6 +7,7 @@ from gdo.base.Render import Mode
 from gdo.core.GDO_Session import GDO_Session
 from gdo.core.GDT_UInt import GDT_UInt
 from gdo.irc.IRCCommand import IRCCommand
+from gdo.irc.method.autologin import autologin
 
 
 class CMD_PRIVMSG(IRCCommand):
@@ -27,7 +28,9 @@ class CMD_PRIVMSG(IRCCommand):
         rec_name = self._irc_params[0]
         if rec_name.startswith('#'):
             self._env_channel = self.irc_channel(rec_name)
-        message = Message(line, Mode.IRC).env_copy(self).env_mode(Mode.IRC)
+        message = Message(line, Mode.IRC).env_copy(self)
+        if not self._env_user._authenticated:
+            autologin().env_copy(self).maybe_probe(self._env_user, message)
         event_loop = self._env_server.get_connector()._event_loop
         asyncio.ensure_future(message.execute(), loop=event_loop)
         return self.empty()
