@@ -39,7 +39,7 @@ class IRCWriter(Thread):
         Logger.debug(f"IRCWriter.write({prefix}{message._result})")
         from gdo.irc.method.CMD_PRIVMSG import CMD_PRIVMSG
         chunk_size = CMD_PRIVMSG().env_copy(message).get_max_msg_len()
-        chunks = Strings.split_boundary(message._result, chunk_size - len(prefix))
+        chunks = Strings.split_boundary(message._result, chunk_size - len(prefix) - 16)
         for chunk in chunks:
             msg = Message(message._message, message._env_mode).env_copy(message).result(prefix + chunk)
             if self._queue.get_next_sleep_time() == 0:
