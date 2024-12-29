@@ -2,6 +2,7 @@ import asyncio
 import socket
 import ssl
 
+from gdo.base.Application import Application
 from gdo.base.Exceptions import GDOException, GDOMethodException
 from gdo.base.Logger import Logger
 from gdo.base.Message import Message
@@ -41,7 +42,7 @@ class IRC(Connector):
     def gdo_has_channels(self) -> bool:
         return True
 
-    def gdo_connect(self):
+    def gdo_connect(self) -> bool:
         try:
             url = self._server.get_url()
             host = url['host']
@@ -112,7 +113,10 @@ class IRC(Connector):
             return module_irc.instance().get_method("CMD_NA")
 
     def process_message(self, message: str):
+        Application.tick()
+
         Logger.debug(message)
+
         prefix, command, params = self.parse_message(message)
 
         cmd = self.get_command(command)

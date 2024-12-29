@@ -19,7 +19,7 @@ class CMD_PRIVMSG(IRCCommand):
     def get_max_msg_len(self) -> int:
         return self.get_config_server_value('max_msg_len')
 
-    def gdo_execute(self):
+    def gdo_execute(self) -> GDT:
         Application.mode(Mode.IRC)
         line = self._irc_params[1]
         self._env_user = self.irc_user(self._irc_prefix)

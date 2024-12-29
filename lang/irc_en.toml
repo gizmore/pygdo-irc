@@ -1,1 +1,8 @@
 module_irc = "IRC"
+
+############
+# IRC Join #
+############
+mt_irc_join = "Join"
+md_irc_join = "Join a IRC Channel."
+msg_irc_join_channel = "Trying to join %s"

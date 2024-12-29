@@ -1,10 +1,11 @@
+from gdo.base.GDT import GDT
 from gdo.irc.IRCCommand import IRCCommand
 from gdo.irc.IRCUtil import IRCUtil
 
 
 class CMD_353(IRCCommand):
 
-    def gdo_execute(self):
+    def gdo_execute(self) -> GDT:
         users = self._irc_params[3].split(' ')
         channel = self.init_channel(2)
         for username in users:
