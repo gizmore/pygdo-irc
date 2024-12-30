@@ -13,7 +13,7 @@ class CMD_330(IRCCommand):
         username = self._irc_params[0]
         user = self._env_server.get_or_create_user(username)
         user._authenticated = True
-        original_message = autologin.__class__.PROBES[username][1]
+        original_message = autologin.PROBES[username][1]
         self._env_server.send_to_user(user, t('msg_autologin'))
         Application.MESSAGES.put(Message(original_message._message, Mode.IRC).env_copy(original_message))
         return self.empty()
