@@ -31,7 +31,7 @@ class IRCWriter(Thread):
                     self.write_now(message._result)
                     time.sleep(self._queue.get_next_sleep_time())
                 else:
-                    time.sleep(0.05)
+                    time.sleep(0.08)
         except Exception as e:
             self._connector.disconnect(str(e))
 
