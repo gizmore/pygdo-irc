@@ -122,7 +122,9 @@ class IRC(Connector):
         cmd._irc_prefix = prefix
         cmd._irc_params = params
 
-        cmd.gdo_execute()
+        result = cmd.gdo_execute()
+        while asyncio.iscoroutine(result):
+            result = asyncio.run(result)
 
     def parse_message(self, message: str):
         prefix = None
