@@ -11,7 +11,9 @@ from gdo.base.Method import Method
 from gdo.base.Render import Mode
 from gdo.base.Util import Random
 from gdo.core.Connector import Connector
+from gdo.core.GDO_Permission import GDO_Permission
 from gdo.core.GDO_User import GDO_User
+from gdo.core.GDO_UserPermission import GDO_UserPermission
 from gdo.core.GDT_UserType import GDT_UserType
 from gdo.irc.connector.IRCReader import IRCReader
 from gdo.irc.connector.IRCWriter import IRCWriter
@@ -203,4 +205,8 @@ class IRC(Connector):
         self._own_nick = dog_name
         self._own_user = self._server.get_or_create_user(dog_name, dog_name)
         self._own_user.save_val('user_type', GDT_UserType.CHAPPY)
+        GDO_UserPermission.grant(self._own_user, GDO_Permission.ADMIN)
+        GDO_UserPermission.grant(self._own_user, GDO_Permission.STAFF)
+        GDO_UserPermission.grant(self._own_user, GDO_Permission.VOICE)
+        self._own_user._authenticated = True
         return self._own_user
