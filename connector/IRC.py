@@ -184,21 +184,23 @@ class IRC(Connector):
         server = message._env_server
         text = message._result
         for line in text.splitlines():
-            msg = message.message_copy().result(line)
-            prefix = f'{message._env_user.render_name()}: ' if not message._thread_user else ''
-            Logger.debug(f"{server.get_name()} >> {channel.render_name()} >> {line}")
-            prefix = f'PRIVMSG {channel.get_name()} :{prefix}'
-            self._send_thread.write(prefix, msg)
+            if line:
+                msg = message.message_copy().result(line)
+                prefix = f'{message._env_user.render_name()}: ' if not message._thread_user else ''
+                Logger.debug(f"{server.get_name()} >> {channel.render_name()} >> {line}")
+                prefix = f'PRIVMSG {channel.get_name()} :{prefix}'
+                self._send_thread.write(prefix, msg)
 
     async def gdo_send_to_user(self, message: Message):
         server = message._env_server
         user = message._env_user
         text = message._result
         for line in text.splitlines():
-            msg = message.message_copy().result(line)
-            Logger.debug(f"{server.get_name()} >> {user.render_name()} >> {line}")
-            prefix = f'PRIVMSG {user.get_name()} :'
-            self._send_thread.write(prefix, msg)
+            if line:
+                msg = message.message_copy().result(line)
+                Logger.debug(f"{server.get_name()} >> {user.render_name()} >> {line}")
+                prefix = f'PRIVMSG {user.get_name()} :'
+                self._send_thread.write(prefix, msg)
 
     def gdo_get_dog_user(self) -> GDO_User:
         return self._own_user
