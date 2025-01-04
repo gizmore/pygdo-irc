@@ -12,7 +12,7 @@ class autologin(Method):
         return ''
 
     def maybe_probe(self, user: GDO_User, original_message: Message):
-        username = user.get_name()
+        username = user.get_name_sid()
         if username in self.__class__.PROBES:
             probe = self.__class__.PROBES[username]
             if probe[0] < Application.TIME:
