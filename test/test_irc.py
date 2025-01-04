@@ -60,7 +60,7 @@ class IRCTestCase(unittest.TestCase):
         from gdo.core.method.help import help
         server = IRCTestCase.IRC_SERVER
         user = web_gizmore()
-        out = help().env_server(server).env_user(user).gdo_execute().render_irc()
+        out = help().env_server(server).env_user(user, True).gdo_execute().render_irc()
         self.assertIn('Core', out, 'IRC Help does not work.')
 
     def test_04_connect_irc_server(self):
