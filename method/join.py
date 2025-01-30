@@ -18,7 +18,8 @@ class join(IRCCommand):
             GDT_IRCChannel('channel').not_null(),
         ]
 
-    def gdo_method_config_channel(self) -> [GDT]:
+    @classmethod
+    def gdo_method_config_channel(cls) -> [GDT]:
         return [
             GDT_Bool('auto_join'),
         ]

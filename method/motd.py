@@ -6,7 +6,8 @@ from gdo.irc.IRCCommand import IRCCommand
 class motd(IRCCommand):
     MOTDS: dict[str, str] = {}  # MOTD in progress.
 
-    def gdo_method_config_server(self) -> [GDT]:
+    @classmethod
+    def gdo_method_config_server(cls) -> [GDT]:
         return [
             GDT_Text('irc_motd'),
         ]

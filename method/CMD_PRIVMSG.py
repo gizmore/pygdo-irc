@@ -12,7 +12,8 @@ from gdo.irc.method.autologin import autologin
 
 class CMD_PRIVMSG(IRCCommand):
 
-    def gdo_method_config_server(self) -> [GDT]:
+    @classmethod
+    def gdo_method_config_server(cls) -> [GDT]:
         return [
             GDT_UInt('max_msg_len').initial('256'),
         ]
