@@ -20,4 +20,4 @@ class autologin(Method):
             else:
                 return
         self.__class__.PROBES[username] = (Application.TIME + 300, original_message)
-        self._env_server.get_connector().send_raw(f"WHOIS {username}")
+        self._env_server.get_connector().send_raw(f"WHOIS {user.get_name()}")
