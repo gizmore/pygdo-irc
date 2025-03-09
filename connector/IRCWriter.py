@@ -19,6 +19,7 @@ class IRCWriter(Thread):
         super().__init__()
         self._connector = irc_connector
         self._queue = IRCSendQueue(irc_connector)
+        self.name = f"{self._connector._server.get_name()} IRCWriter"
 
     def run(self):
         try:

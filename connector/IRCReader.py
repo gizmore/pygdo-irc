@@ -13,6 +13,7 @@ class IRCReader(Thread):
     def __init__(self, irc_connector):
         super().__init__()
         self._connector = irc_connector
+        self.name = self._connector._server.get_name() + " IRCReader"
         # Logger.debug('New IRC reader')
 
     def run(self):
