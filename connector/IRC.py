@@ -191,7 +191,7 @@ class IRC(Connector):
                 prefix = f'PRIVMSG {channel.get_name()} :{prefix}'
                 self._send_thread.write(prefix, msg)
 
-    async def gdo_send_to_user(self, message: Message):
+    async def gdo_send_to_user(self, message: Message, notice: bool=False):
         server = message._env_server
         user = message._env_user
         text = message._result
@@ -199,7 +199,7 @@ class IRC(Connector):
             if line:
                 msg = message.message_copy().result(line)
                 Logger.debug(f"{server.get_name()} >> {user.render_name()} >> {line}")
-                prefix = f'PRIVMSG {user.get_name()} :'
+                prefix = f'NOTICE {user.get_name()} :' if notice else f'PRIVMSG {user.get_name()} :'
                 self._send_thread.write(prefix, msg)
 
     def gdo_get_dog_user(self) -> GDO_User:
