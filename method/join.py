@@ -36,6 +36,6 @@ class join(IRCCommand):
             self.save_config_channel('auto_join', '1')
 
     def on_connected(self):
-        channels = self.channels_with_setting('auto_join', '1')
+        channels = self.channels_with_setting('auto_join', '1', self._env_server)
         for channel in channels:
             self.irc_connector().send_raw(f"JOIN {channel.get_name()}")
