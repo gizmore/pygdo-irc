@@ -7,7 +7,8 @@ from gdo.irc.IRCCommand import IRCCommand
 
 class join(IRCCommand):
 
-    def gdo_trigger(self) -> str:
+    @classmethod
+    def gdo_trigger(cls) -> str:
         return 'irc.join'
 
     def gdo_user_permission(self) -> str | None:

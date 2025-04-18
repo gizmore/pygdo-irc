@@ -9,7 +9,8 @@ class IRCCommand(Method):
     _irc_prefix: str
     _irc_params: list[str]
 
-    def gdo_trigger(self) -> str:
+    @classmethod
+    def gdo_trigger(cls) -> str:
         return ''
 
     def get_server_id(self) -> str:

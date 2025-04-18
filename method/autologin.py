@@ -8,7 +8,8 @@ class autologin(Method):
 
     PROBES: dict[str, tuple[float, Message]] = {}
 
-    def gdo_trigger(self) -> str:
+    @classmethod
+    def gdo_trigger(cls) -> str:
         return ''
 
     def maybe_probe(self, user: GDO_User, original_message: Message):
