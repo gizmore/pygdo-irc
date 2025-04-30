@@ -14,7 +14,7 @@ class join(IRCCommand):
     def gdo_user_permission(self) -> str | None:
         return 'staff'
 
-    def gdo_parameters(self) -> [GDT]:
+    def gdo_parameters(self) -> list[GDT]:
         return [
             GDT_IRCChannel('channel').not_null(),
         ]

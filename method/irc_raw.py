@@ -12,7 +12,7 @@ class irc_raw(IRCCommand):
     def gdo_user_permission(self) -> str | None:
         return 'admin'
 
-    def gdo_parameters(self) -> [GDT]:
+    def gdo_parameters(self) -> list[GDT]:
         return [
             GDT_RestOfText('cmd'),
         ]
