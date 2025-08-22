@@ -22,8 +22,8 @@ class IRCCommand(Method):
 
     def irc_user(self, prefix: str) -> GDO_User:
         username = Strings.substr_to(prefix, '!', prefix)
-        user = self._env_server.get_or_create_user(username)
-        Application.set_current_user(self._env_user)
+        user = self._env_user = self._env_server.get_or_create_user(username)
+        Application.set_current_user(user)
         return user
 
     def irc_channel(self, name: str) -> GDO_Channel:
