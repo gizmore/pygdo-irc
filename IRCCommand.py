@@ -1,3 +1,4 @@
+from gdo.base.Application import Application
 from gdo.base.Method import Method
 from gdo.base.Util import Strings
 from gdo.core.GDO_Channel import GDO_Channel
@@ -21,7 +22,9 @@ class IRCCommand(Method):
 
     def irc_user(self, prefix: str) -> GDO_User:
         username = Strings.substr_to(prefix, '!', prefix)
-        return self._env_server.get_or_create_user(username)
+        user = self._env_server.get_or_create_user(username)
+        Application.set_current_user(self._env_user)
+        return user
 
     def irc_channel(self, name: str) -> GDO_Channel:
         return self._env_server.get_or_create_channel(name)

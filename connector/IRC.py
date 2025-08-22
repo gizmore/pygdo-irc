@@ -112,6 +112,7 @@ class IRC(Connector):
 
     def process_message(self, message: str):
         Application.tick()
+        Application.mode(Mode.IRC)
 
         Logger.debug(message)
 
