@@ -29,11 +29,11 @@ class module_irc(GDO_Module):
         Application.EVENTS.subscribe('irc_connected', self.on_connected)
         Application.EVENTS.subscribe('irc_joined', self.on_joined)
 
-    def on_connected(self, server: GDO_Server, message: Message):
+    async def on_connected(self, server: GDO_Server, message: Message):
         Logger.debug(f"IRC Server {server.render_name()} connected!")
         from gdo.irc.method.join import join
-        join().env_copy(message).on_connected()
+        await join().env_copy(message).on_connected()
 
-    def on_joined(self, channel: GDO_Channel, user: GDO_User, message: Message):
+    async def on_joined(self, channel: GDO_Channel, user: GDO_User, message: Message):
         from gdo.irc.method.join import join
         join().env_copy(message).on_bot_joined()

@@ -45,47 +45,50 @@ class IRC(Connector):
     def gdo_has_channels(self) -> bool:
         return True
 
-    def gdo_connect(self) -> bool:
+    async def gdo_connect(self) -> bool:
         try:
             url = self._server.get_url()
             host = url['host']
             port = url['port']
             self._own_nick = self.get_nickname()
             Logger.debug(f"Connecting to {url['raw']}")
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            context = ssl.create_default_context()
+
+            ssl_ctx = None
             if url['tls']:
-                ssl_sock = context.wrap_socket(sock, server_hostname=host)
-                ssl_sock.connect((host, port))
-                self._socket = ssl_sock
-            else:
-                sock.connect((host, port))
-                self._socket = sock
-
-            self._connected = True
-
-            self._event_loop = asyncio.get_event_loop()
+                ssl_ctx = ssl.create_default_context()
+                # Optionally:
+                # ssl_ctx.check_hostname = True
+                # ssl_ctx.verify_mode = ssl.CERT_REQUIRED
 
             self._recv_thread = IRCReader(self)
-            self._recv_thread.daemon = True
-            self._recv_thread.start()
-
             self._send_thread = IRCWriter(self)
-            self._send_thread.daemon = True
-            self._send_thread.start()
 
-            self.send_user_cmd()
-
-            Logger.debug('connected!')
-            return True
+            recv, send = await asyncio.open_connection(
+                host,
+                port,
+                ssl=ssl_ctx,
+                server_hostname=host if url['tls'] else None,
+            )
+            self._recv_thread.sock = recv
+            self._send_thread.sock = send
+            if recv and send:
+                self._connected = True
+                reader_task = asyncio.create_task(self._recv_thread.run_(), name=self._server.get_name()+"_IRC_READ")
+                writer_task = asyncio.create_task(self._send_thread.run_(), name=self._server.get_name()+"_IRC_WRITE")
+                Application.TASKS[self._server.get_name()+"_IRC_READ"] = reader_task
+                Application.TASKS[self._server.get_name()+"_IRC_WRITE"] = writer_task
+                await self.send_user_cmd()
+                await asyncio.wait([reader_task, writer_task])
+                Logger.debug('connected!')
+            return self._connected
 
         except Exception as ex:
             Logger.exception(ex)
             self.connect_failed()
             return False
 
-    def gdo_disconnect(self, quit_message: str):
-        self.send_quit(quit_message)
+    async def gdo_disconnect(self, quit_message: str):
+        await self.send_quit(quit_message)
         time.sleep(0.5)
         # self.gdo_disconnected()
 
@@ -110,7 +113,7 @@ class IRC(Connector):
             Logger.debug(f'Unknown IRC Command {name}')
             return module_irc.instance().get_method("CMD_NA")
 
-    def process_message(self, message: str):
+    async def process_message(self, message: str):
         Application.tick()
         Application.mode(Mode.IRC)
 
@@ -125,7 +128,8 @@ class IRC(Connector):
 
         result = cmd.gdo_execute()
         while asyncio.iscoroutine(result):
-            result = asyncio.run(result)
+            result = await result
+        return result
 
     def parse_message(self, message: str):
         prefix = None
@@ -161,24 +165,24 @@ class IRC(Connector):
     def get_nickname(self):
         return self._server.get_username()
 
-    def send_user_cmd(self, stub: Method = None):
+    async def send_user_cmd(self, stub: Method = None):
         nickname = self.get_nickname()
-        self.send_raw(f"USER {nickname} {nickname} {nickname} :{nickname}")
-        self.send_raw(f"NICK {nickname}")
+        await self.send_raw(f"USER {nickname} {nickname} {nickname} :{nickname}")
+        await self.send_raw(f"NICK {nickname}")
 
-    def send_nick_cmd(self):
+    async def send_nick_cmd(self):
         nickname = f"{self.get_nickname()}_{Random.mrand(1, 99):02d}"
         self._own_nick = nickname
-        self.send_raw(f"NICK {nickname}")
+        await self.send_raw(f"NICK {nickname}")
 
-    def send_quit(self, message: str):
-        self.send_raw(f"QUIT {message}")
+    async def send_quit(self, message: str):
+        await self.send_raw(f"QUIT {message}")
 
     ########
     # Send #
     ########
-    def send_raw(self, message: str):
-        self._send_thread.write_now(message)
+    async def send_raw(self, message: str):
+        await self._send_thread.write_now(message)
 
     async def gdo_send_to_channel(self, message: Message):
         channel = message._env_channel
@@ -190,7 +194,7 @@ class IRC(Connector):
                 prefix = f'{message._env_user.render_name()}: ' if not message._thread_user else ''
                 Logger.debug(f"{server.get_name()} >> {channel.render_name()} >> {line}")
                 prefix = f'PRIVMSG {channel.get_name()} :{prefix}'
-                self._send_thread.write(prefix, msg)
+                await self._send_thread.write(prefix, msg)
 
     async def gdo_send_to_user(self, message: Message, notice: bool=False):
         server = message._env_server
@@ -201,7 +205,7 @@ class IRC(Connector):
                 msg = message.message_copy().result(line)
                 Logger.debug(f"{server.get_name()} >> {user.render_name()} >> {line}")
                 prefix = f'NOTICE {user.get_name()} :' if notice else f'PRIVMSG {user.get_name()} :'
-                self._send_thread.write(prefix, msg)
+                await self._send_thread.write(prefix, msg)
 
     def gdo_get_dog_user(self) -> GDO_User:
         return self._own_user

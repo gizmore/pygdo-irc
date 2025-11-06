@@ -12,13 +12,14 @@ class autologin(Method):
     def gdo_trigger(cls) -> str:
         return ''
 
-    def maybe_probe(self, user: GDO_User, original_message: Message):
+    async def maybe_probe(self, user: GDO_User, original_message: Message):
         username = user.get_name_sid()
         if username in self.__class__.PROBES:
             probe = self.__class__.PROBES[username]
             if probe[0] < Application.TIME:
                 pass
             else:
-                return
+                return False
         self.__class__.PROBES[username] = (Application.TIME + 300, original_message)
-        self._env_server.get_connector().send_raw(f"WHOIS {user.get_name()}")
+        await self._env_server.get_connector().send_raw(f"WHOIS {user.get_name()}")
+        return True

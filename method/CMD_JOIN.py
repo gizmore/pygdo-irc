@@ -5,7 +5,7 @@ from gdo.irc.IRCCommand import IRCCommand
 
 class CMD_JOIN(IRCCommand):
 
-    def gdo_execute(self) -> GDT:
+    async def gdo_execute(self) -> GDT:
         self._env_user = self.irc_user(self._irc_prefix)
         channel = self.init_channel()
         channel.on_user_joined(self._env_user)
