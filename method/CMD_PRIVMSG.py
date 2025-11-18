@@ -28,7 +28,7 @@ class CMD_PRIVMSG(IRCCommand):
         rec_name = self._irc_params[0]
         if rec_name.startswith('#'):
             self._env_channel = self.irc_channel(rec_name)
-        message = Message(line, Mode.IRC).env_copy(self)
+        message = Message(line, Mode.irc).env_copy(self)
         if not self._env_user._authenticated:
             if not await autologin().env_copy(self).maybe_probe(self._env_user, message):
                 pass

@@ -40,7 +40,7 @@ class IRC(Connector):
         self._own_user = None
 
     def get_render_mode(self) -> Mode:
-        return Mode.IRC
+        return Mode.irc
 
     def gdo_has_channels(self) -> bool:
         return True
@@ -108,14 +108,14 @@ class IRC(Connector):
         from gdo.irc.module_irc import module_irc
         mod = module_irc.instance()
         try:
-            return mod.get_method(f"CMD_{name}").env_mode(Mode.IRC).env_server(self._server).env_channel(None).env_user(None, False).env_session(None)
+            return mod.get_method(f"CMD_{name}").env_mode(Mode.irc).env_server(self._server).env_channel(None).env_user(None, False).env_session(None)
         except GDOMethodException as ex:
             Logger.debug(f'Unknown IRC Command {name}')
             return module_irc.instance().get_method("CMD_NA")
 
     async def process_message(self, message: str):
         Application.tick()
-        Application.mode(Mode.IRC)
+        Application.mode(Mode.irc)
 
         Logger.debug(message)
 
