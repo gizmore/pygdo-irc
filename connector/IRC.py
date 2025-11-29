@@ -214,8 +214,8 @@ class IRC(Connector):
         self._own_nick = dog_name
         self._own_user = await self._server.get_or_create_user(dog_name)
         self._own_user.save_val('user_type', GDT_UserType.CHAPPY)
-        GDO_UserPermission.grant(self._own_user, GDO_Permission.ADMIN)
-        GDO_UserPermission.grant(self._own_user, GDO_Permission.STAFF)
-        GDO_UserPermission.grant(self._own_user, GDO_Permission.VOICE)
+        await GDO_UserPermission.grant(self._own_user, GDO_Permission.ADMIN)
+        await GDO_UserPermission.grant(self._own_user, GDO_Permission.STAFF)
+        await GDO_UserPermission.grant(self._own_user, GDO_Permission.VOICE)
         self._own_user._authenticated = True
         return self._own_user
