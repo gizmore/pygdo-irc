@@ -10,7 +10,7 @@ from gdo.irc.method.autologin import autologin
 class CMD_330(IRCCommand):
 
     async def gdo_execute(self) -> GDT:
-        user = self._env_server.get_or_create_user(self._irc_params[1])
+        user = await self._env_server.get_or_create_user(self._irc_params[1])
         user._authenticated = True
         original_message = autologin.PROBES[user.get_name_sid()][1]
         await self._env_server.send_to_user(user, t('msg_autologin'))

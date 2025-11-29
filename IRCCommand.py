@@ -4,7 +4,7 @@ from gdo.base.Util import Strings
 from gdo.core.GDO_Channel import GDO_Channel
 from gdo.core.GDO_User import GDO_User
 from gdo.irc.connector.IRC import IRC
-
+import asyncio
 
 class IRCCommand(Method):
     _irc_prefix: str
@@ -22,7 +22,7 @@ class IRCCommand(Method):
 
     def irc_user(self, prefix: str) -> GDO_User:
         username = Strings.substr_to(prefix, '!', prefix)
-        user = self._env_user = self._env_server.get_or_create_user(username)
+        user = self._env_user = asyncio.run(self._env_server.get_or_create_user(username))
         Application.set_current_user(user)
         return user
 
