@@ -20,9 +20,9 @@ class IRCCommand(Method):
     def irc_connector(self) -> IRC:
         return self._env_server.get_connector()
 
-    def irc_user(self, prefix: str) -> GDO_User:
+    async def irc_user(self, prefix: str) -> GDO_User:
         username = Strings.substr_to(prefix, '!', prefix)
-        user = self._env_user = asyncio.run(self._env_server.get_or_create_user(username))
+        user = self._env_user = await self._env_server.get_or_create_user(username)
         Application.set_current_user(user)
         return user
 

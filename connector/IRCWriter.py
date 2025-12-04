@@ -27,7 +27,7 @@ class IRCWriter(Thread):
         self.name = f"IRC-Writer({self._connector._server.get_name()})"
         super().run()
         Logger.debug("Starting IRC Send queue")
-        asyncio.run_coroutine_threadsafe(self.run_(), loop=Application.LOOP)
+        asyncio.create_task(self.run_())
 
     async def run_(self):
         try:

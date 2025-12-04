@@ -26,13 +26,13 @@ class IRCReader(Thread):
         self.name = f"IRC-Reader({self._connector._server.get_name()})"
         super().run()
         self._connector._socket.setblocking(False)
-        asyncio.run_coroutine_threadsafe(self.run_(), loop=Application.LOOP)
+        asyncio.create_task(self.run_())
 
     async def run_(self):
         while self._connector.is_connected() and Application.RUNNING:
             if line := await self.read_irc_line():
                 await self._connector.process_message(line)
-            await asyncio.sleep(0.05)
+            # await asyncio.sleep(0.05)
 
     async def read_irc_line(self):
         data = await self.sock.readline()

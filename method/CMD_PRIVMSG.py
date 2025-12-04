@@ -23,7 +23,7 @@ class CMD_PRIVMSG(IRCCommand):
 
     async def gdo_execute(self) -> GDT:
         line = self._irc_params[1]
-        self._env_user = self.irc_user(self._irc_prefix)
+        self._env_user = await self.irc_user(self._irc_prefix)
         self._env_session = GDO_Session.for_user(self._env_user)
         rec_name = self._irc_params[0]
         if rec_name.startswith('#'):
