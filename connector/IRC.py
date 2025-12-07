@@ -75,8 +75,8 @@ class IRC(Connector):
                 self._connected = True
                 reader_task = asyncio.create_task(self._recv_thread.run_(), name=self._server.get_name()+"_IRC_READ")
                 writer_task = asyncio.create_task(self._send_thread.run_(), name=self._server.get_name()+"_IRC_WRITE")
-                Application.TASKS[self._server.get_name()+"_IRC_READ"] = reader_task
-                Application.TASKS[self._server.get_name()+"_IRC_WRITE"] = writer_task
+                Application.TASKS.append(reader_task)
+                Application.TASKS.append(writer_task)
                 await self.send_user_cmd()
                 await asyncio.wait([reader_task, writer_task])
                 Logger.debug('connected!')
