@@ -39,6 +39,13 @@ class IRC(Connector):
         self._own_nick = 'Dog'
         self._own_user = None
 
+    def render_user_connect_help(self) -> str:
+        url = self._server.get_url()
+        host = url['host']
+        port = url['port']
+        s = 's' if url['tls'] else ''
+        return f'irc{s}://{host}:{port} ({self.get_nickname()})'
+
     def get_render_mode(self) -> Mode:
         return Mode.render_irc
 
