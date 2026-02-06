@@ -121,22 +121,25 @@ class IRC(Connector):
             return module_irc.instance().get_method("CMD_NA")
 
     async def process_message(self, message: str):
-        Application.tick()
-        Application.mode(Mode.render_irc)
+        try:
+            Application.tick()
+            Application.mode(Mode.render_irc)
 
-        Logger.debug(message)
+            Logger.debug(message)
 
-        prefix, command, params = self.parse_message(message)
+            prefix, command, params = self.parse_message(message)
 
-        cmd = self.get_command(command)
-        cmd._message = message
-        cmd._irc_prefix = prefix
-        cmd._irc_params = params
+            cmd = self.get_command(command)
+            cmd._message = message
+            cmd._irc_prefix = prefix
+            cmd._irc_params = params
 
-        result = cmd.gdo_execute()
-        while asyncio.iscoroutine(result):
-            result = await result
-        return result
+            result = cmd.gdo_execute()
+            while asyncio.iscoroutine(result):
+                result = await result
+            return result
+        except Exception as ex:
+            Logger.exception(ex)
 
     def parse_message(self, message: str):
         prefix = None
