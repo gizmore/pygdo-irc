@@ -198,7 +198,7 @@ class IRC(Connector):
         channel = message._env_channel
         server = message._env_server
         text = message._result
-        for line in text.splitlines():
+        for line in text.split('\n'):
             if line:
                 msg = message.message_copy().result(line)
                 prefix = f'{message._env_user.render_name()}: ' if not message._thread_user else ''
@@ -210,7 +210,7 @@ class IRC(Connector):
         server = message._env_server
         user = message._env_user
         text = message._result
-        for line in text.splitlines():
+        for line in text.split('\n'):
             if line:
                 msg = message.message_copy().result(line)
                 Logger.debug(f"{server.get_name()} >> {user.render_name()} >> {line}")
