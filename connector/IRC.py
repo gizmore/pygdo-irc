@@ -1,5 +1,4 @@
 import asyncio
-import socket
 import ssl
 import time
 
@@ -195,27 +194,29 @@ class IRC(Connector):
         await self._send_thread.write_now(message)
 
     async def gdo_send_to_channel(self, message: Message):
-        channel = message._env_channel
-        server = message._env_server
-        text = message._result
-        for line in text.split('\n'):
-            if line:
-                msg = message.message_copy().result(line)
-                prefix = f'{message._env_user.render_name()}: ' if not message._thread_user else ''
-                Logger.debug(f"{server.get_name()} >> {channel.render_name()} >> {line}")
-                prefix = f'PRIVMSG {channel.get_name()} :{prefix}'
-                await self._send_thread.write(prefix, msg)
+        if self._send_thread:
+            channel = message._env_channel
+            server = message._env_server
+            text = message._result
+            for line in text.split('\n'):
+                if line:
+                    msg = message.message_copy().result(line)
+                    prefix = f'{message._env_user.render_name()}: ' if not message._thread_user else ''
+                    Logger.debug(f"{server.get_name()} >> {channel.render_name()} >> {line}")
+                    prefix = f'PRIVMSG {channel.get_name()} :{prefix}'
+                    await self._send_thread.write(prefix, msg)
 
     async def gdo_send_to_user(self, message: Message, notice: bool=False):
-        server = message._env_server
-        user = message._env_user
-        text = message._result
-        for line in text.split('\n'):
-            if line:
-                msg = message.message_copy().result(line)
-                Logger.debug(f"{server.get_name()} >> {user.render_name()} >> {line}")
-                prefix = f'NOTICE {user.get_name()} :' if notice else f'PRIVMSG {user.get_name()} :'
-                await self._send_thread.write(prefix, msg)
+        if self._send_thread:
+            server = message._env_server
+            user = message._env_user
+            text = message._result
+            for line in text.split('\n'):
+                if line:
+                    msg = message.message_copy().result(line)
+                    Logger.debug(f"{server.get_name()} >> {user.render_name()} >> {line}")
+                    prefix = f'NOTICE {user.get_name()} :' if notice else f'PRIVMSG {user.get_name()} :'
+                    await self._send_thread.write(prefix, msg)
 
     def gdo_get_dog_user(self) -> GDO_User:
         return self._own_user
