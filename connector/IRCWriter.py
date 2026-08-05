@@ -45,14 +45,40 @@ class IRCWriter(Thread):
     async def write(self, prefix: str, message: Message):
         Logger.debug(f"IRCWriter.write({prefix}{message._result})")
         from gdo.irc.method.CMD_PRIVMSG import CMD_PRIVMSG
-        chunk_size = CMD_PRIVMSG().env_copy(message).get_max_msg_len()
-        chunks = Strings.split_boundary(message._result, chunk_size - len(prefix) - 16)
+        line_limit = CMD_PRIVMSG().env_copy(message).get_max_msg_len()
+        chunk_size = line_limit - len((prefix + '\r\n').encode('utf-8'))
+        chunks = self.split_utf8_boundary(message._result, chunk_size)
         for chunk in chunks:
             msg = Message(message._message, message._env_mode).env_copy(message).result(prefix + chunk)
             if self._queue.get_next_sleep_time() == 0:
-                await self.write_now(prefix + msg._result)
+                await self.write_now(msg._result)
             else:
                 await self._queue.append(msg)
+
+    @staticmethod
+    def split_utf8_boundary(text: str, byte_limit: int) -> list[str]:
+        """Split text without exceeding an IRC line's UTF-8 payload limit."""
+        if byte_limit < 1:
+            raise ValueError('IRC prefix leaves no room for a message.')
+        chunks = []
+        while text:
+            if len(text.encode('utf-8')) <= byte_limit:
+                chunks.append(text)
+                break
+            length = 0
+            end = 0
+            for index, char in enumerate(text):
+                char_len = len(char.encode('utf-8'))
+                if length + char_len > byte_limit:
+                    break
+                length += char_len
+                end = index + 1
+            boundary = text.rfind(' ', 0, end)
+            if boundary > 0:
+                end = boundary
+            chunks.append(text[:end])
+            text = text[end:]
+        return chunks
 
     async def write_now(self, message: str):
         Logger.debug(f"{self._connector._server.get_name()} >> {message}")

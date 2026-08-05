@@ -2,11 +2,17 @@ import os
 import re
 import time
 import unittest
+from unittest.mock import patch
 
 from gdo.base.Application import Application
 from gdo.base.Exceptions import GDOParamError
+from gdo.base.Message import Message
 from gdo.base.ModuleLoader import ModuleLoader
+from gdo.base.Render import Mode
+from gdo.base.Logger import Logger
 from gdo.core.GDO_Server import GDO_Server
+from gdo.irc.connector.IRCWriter import IRCWriter
+from gdo.irc.method.CMD_PRIVMSG import CMD_PRIVMSG
 from gdo.core.method.launch import launch
 from gdotest.TestUtil import reinstall_module, cli_plug, web_gizmore, install_module, GDOTestCase
 
@@ -21,6 +27,42 @@ class IRCPlug:
     def exec(self):
         connector = IRCTestCase.IRC_SERVER.get_connector()
         connector.process_message(self._msg)
+
+
+class IRCWriterTest(unittest.IsolatedAsyncioTestCase):
+
+    async def test_immediate_chunks_respect_prefix_and_utf8_line_limit(self):
+        """Chunks preserve content and fit the complete IRC line in UTF-8."""
+        Application.mode(Mode.render_irc)
+        prefix = 'PRIVMSG #dog :Dog: '
+        text = 'wechall.defcon, wechall.import_wc5 🙂🙂🙂🙂🙂'
+        line_limit = len(prefix.encode('utf-8')) + 18
+        sent = []
+
+        class Queue:
+            def get_next_sleep_time(self):
+                return 0
+
+        class Writer(IRCWriter):
+            async def write_now(self, message):
+                sent.append(message)
+
+        writer = object.__new__(Writer)
+        writer._queue = Queue()
+        message = Message('test', Mode.render_irc).result(text)
+        message._env_server = None
+        message._env_user = None
+
+        with (
+            patch.object(CMD_PRIVMSG, 'get_max_msg_len', return_value=line_limit),
+            patch.object(Logger, 'debug'),
+        ):
+            await writer.write(prefix, message)
+
+        self.assertGreater(len(sent), 1)
+        self.assertTrue(all(chunk.startswith(prefix) for chunk in sent))
+        self.assertEqual(text, ''.join(chunk[len(prefix):] for chunk in sent))
+        self.assertTrue(all(len((chunk + '\r\n').encode('utf-8')) <= line_limit for chunk in sent))
 
 
 class IRCTestCase(GDOTestCase):
@@ -75,4 +117,3 @@ class IRCTestCase(GDOTestCase):
 
 if __name__ == '__main__':
     unittest.main()
-    
