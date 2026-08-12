@@ -11,6 +11,7 @@ from gdo.base.ModuleLoader import ModuleLoader
 from gdo.base.Render import Mode
 from gdo.base.Logger import Logger
 from gdo.core.GDO_Server import GDO_Server
+from gdo.irc.connector.IRCReader import IRCReader
 from gdo.irc.connector.IRCWriter import IRCWriter
 from gdo.irc.method.CMD_PRIVMSG import CMD_PRIVMSG
 from gdo.core.method.launch import launch
@@ -63,6 +64,33 @@ class IRCWriterTest(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(all(chunk.startswith(prefix) for chunk in sent))
         self.assertEqual(text, ''.join(chunk[len(prefix):] for chunk in sent))
         self.assertTrue(all(len((chunk + '\r\n').encode('utf-8')) <= line_limit for chunk in sent))
+
+
+class IRCReaderTest(unittest.IsolatedAsyncioTestCase):
+
+    async def test_eof_marks_connector_disconnected(self):
+        """A remote EOF must release the server loop for reconnect + auto-join."""
+        class Connector:
+            def __init__(self):
+                self.disconnected_called = False
+                self._server = type('Server', (), {'get_name': lambda self: 'test'})()
+
+            def is_connected(self):
+                return True
+
+            def disconnected(self):
+                self.disconnected_called = True
+
+        class Socket:
+            async def readline(self):
+                return b''
+
+        connector = Connector()
+        reader = IRCReader(connector)
+        reader.sock = Socket()
+        with patch.object(Application, 'RUNNING', True), patch.object(Logger, 'debug'):
+            await reader.run_()
+        self.assertTrue(connector.disconnected_called)
 
 
 class IRCTestCase(GDOTestCase):

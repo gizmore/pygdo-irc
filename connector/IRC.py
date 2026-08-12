@@ -1,6 +1,5 @@
 import asyncio
 import ssl
-import time
 
 from gdo.base.Application import Application
 from gdo.base.Exceptions import GDOException, GDOMethodException
@@ -95,16 +94,20 @@ class IRC(Connector):
 
     async def gdo_disconnect(self, quit_message: str):
         await self.send_quit(quit_message)
-        time.sleep(0.5)
+        await asyncio.sleep(0.5)
         # self.gdo_disconnected()
 
     def gdo_disconnected(self):
         """
-        on a disconnect, stop and join all threads gracefully
+        Close the current stream writer. The server loop will construct fresh
+        reader/writer instances on reconnect; receiving IRC 001 then triggers
+        the persisted auto-join channels again.
         """
-        if hasattr(self, '_sock'):
-            self._socket.close()
-            delattr(self, '_sock')
+        writer = self._send_thread
+        if writer and writer.sock:
+            writer.sock.close()
+        self._recv_thread = None
+        self._send_thread = None
 
     #########
     # Parse #

@@ -1,6 +1,7 @@
 import asyncio
 
 from gdo.base.Application import Application
+from gdo.base.Logger import Logger
 from gdo.base.Thread import Thread
 
 
@@ -29,11 +30,21 @@ class IRCReader(Thread):
         asyncio.create_task(self.run_())
 
     async def run_(self):
-        while self._connector.is_connected() and Application.RUNNING:
-            if line := await self.read_irc_line():
-                await self._connector.process_message(line)
-            # await asyncio.sleep(0.05)
+        try:
+            while self._connector.is_connected() and Application.RUNNING:
+                line = await self.read_irc_line()
+                if line is None:
+                    Logger.debug(f"{self.name}: remote IRC connection closed")
+                    self._connector.disconnected()
+                    return
+                if line:
+                    await self._connector.process_message(line)
+        except (ConnectionError, OSError, UnicodeDecodeError) as ex:
+            Logger.exception(ex)
+            self._connector.disconnected()
 
     async def read_irc_line(self):
         data = await self.sock.readline()
+        if not data:
+            return None
         return data.decode().strip()

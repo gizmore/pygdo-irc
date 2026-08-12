@@ -40,7 +40,7 @@ class IRCWriter(Thread):
                     await asyncio.sleep(0.05)
         except Exception as e:
             Logger.exception(e)
-            self._connector.disconnect(str(e))
+            self._connector.disconnected()
 
     async def write(self, prefix: str, message: Message):
         Logger.debug(f"IRCWriter.write({prefix}{message._result})")
