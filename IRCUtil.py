@@ -3,6 +3,7 @@ from gdo.core.GDO_Permission import GDO_Permission
 
 class IRCUtil:
     PERMISSIONS = {
+        '~': GDO_Permission.OWNER,
         '@': GDO_Permission.ADMIN,
         '!': GDO_Permission.ADMIN,
         '%': GDO_Permission.STAFF,

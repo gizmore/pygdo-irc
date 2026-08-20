@@ -13,6 +13,7 @@ from gdo.base.Logger import Logger
 from gdo.core.GDO_Server import GDO_Server
 from gdo.irc.connector.IRCReader import IRCReader
 from gdo.irc.connector.IRCWriter import IRCWriter
+from gdo.irc.IRCUtil import IRCUtil
 from gdo.irc.method.CMD_PRIVMSG import CMD_PRIVMSG
 from gdo.core.method.launch import launch
 from gdotest.TestUtil import reinstall_module, cli_plug, web_gizmore, install_module, GDOTestCase
@@ -64,6 +65,12 @@ class IRCWriterTest(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(all(chunk.startswith(prefix) for chunk in sent))
         self.assertEqual(text, ''.join(chunk[len(prefix):] for chunk in sent))
         self.assertTrue(all(len((chunk + '\r\n').encode('utf-8')) <= line_limit for chunk in sent))
+
+
+class IRCUtilTest(unittest.TestCase):
+
+    def test_strip_owner_prefix(self):
+        self.assertEqual('Founder', IRCUtil.strip_permission('~Founder'))
 
 
 class IRCReaderTest(unittest.IsolatedAsyncioTestCase):
