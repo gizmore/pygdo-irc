@@ -7,6 +7,13 @@ mt_irc_join = "Join"
 md_irc_join = "Join a IRC Channel."
 msg_irc_join_channel = "Trying to join %s"
 
+############
+# IRC Part #
+############
+mt_irc_part = "Part"
+md_irc_part = "Leave an IRC channel and disable its auto-join."
+msg_irc_part_channel = "Left %s and disabled its auto-join."
+
 #############
 # autologin #
 #############
