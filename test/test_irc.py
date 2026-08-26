@@ -12,6 +12,7 @@ from gdo.base.Render import Mode
 from gdo.base.Logger import Logger
 from gdo.core.GDO_Server import GDO_Server
 from gdo.irc.connector.IRCReader import IRCReader
+from gdo.irc.connector.IRC import IRC
 from gdo.irc.connector.IRCWriter import IRCWriter
 from gdo.irc.IRCUtil import IRCUtil
 from gdo.irc.method.CMD_PRIVMSG import CMD_PRIVMSG
@@ -98,6 +99,16 @@ class IRCReaderTest(unittest.IsolatedAsyncioTestCase):
         with patch.object(Application, 'RUNNING', True), patch.object(Logger, 'debug'):
             await reader.run_()
         self.assertTrue(connector.disconnected_called)
+
+
+class IRCPingTest(unittest.TestCase):
+
+    def test_ping_timeout_after_one_learned_interval(self):
+        connector = IRC()
+        connector.got_ping(100.0)
+        connector.got_ping(160.0)
+        self.assertFalse(connector.ping_timed_out(220.0))
+        self.assertTrue(connector.ping_timed_out(221.0))
 
 
 class IRCTestCase(GDOTestCase):

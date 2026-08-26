@@ -1,5 +1,6 @@
 import asyncio
 import ssl
+import time
 
 from gdo.base.Application import Application
 from gdo.base.Exceptions import GDOException, GDOMethodException
@@ -28,6 +29,9 @@ class IRC(Connector):
     _event_loop: object
     _own_nick: str
     _own_user: GDO_User
+    _last_ping: float|None
+    _ping_length: float|None
+    _ping_watchdog: asyncio.Task|None
 
     def __init__(self):
         super().__init__()
@@ -36,6 +40,9 @@ class IRC(Connector):
         self._send_thread = None
         self._own_nick = 'Dog'
         self._own_user = None
+        self._last_ping = None
+        self._ping_length = None
+        self._ping_watchdog = None
 
     def render_user_connect_help(self) -> str:
         url = self._server.get_url()
@@ -67,6 +74,8 @@ class IRC(Connector):
 
             self._recv_thread = IRCReader(self)
             self._send_thread = IRCWriter(self)
+            self._last_ping = None
+            self._ping_length = None
 
             recv, send = await asyncio.open_connection(
                 host,
@@ -80,8 +89,10 @@ class IRC(Connector):
                 self._connected = True
                 reader_task = asyncio.create_task(self._recv_thread.run_(), name=self._server.get_name()+"_IRC_READ")
                 writer_task = asyncio.create_task(self._send_thread.run_(), name=self._server.get_name()+"_IRC_WRITE")
+                self._ping_watchdog = asyncio.create_task(self.watch_pings(), name=self._server.get_name()+"_IRC_PING")
                 Application.TASKS.append(reader_task)
                 Application.TASKS.append(writer_task)
+                Application.TASKS.append(self._ping_watchdog)
                 await self.send_user_cmd()
                 await asyncio.wait([reader_task, writer_task])
                 Logger.debug('connected!')
@@ -106,8 +117,32 @@ class IRC(Connector):
         writer = self._send_thread
         if writer and writer.sock:
             writer.sock.close()
+        if self._ping_watchdog:
+            self._ping_watchdog.cancel()
+            self._ping_watchdog = None
         self._recv_thread = None
         self._send_thread = None
+
+    def got_ping(self, now: float|None=None):
+        """Record a server PING and learn its observed keepalive interval."""
+        now = time.monotonic() if now is None else now
+        if self._last_ping is not None:
+            self._ping_length = now - self._last_ping
+        self._last_ping = now
+
+    def ping_timed_out(self, now: float|None=None) -> bool:
+        if self._last_ping is None or self._ping_length is None:
+            return False
+        now = time.monotonic() if now is None else now
+        return now - self._last_ping > self._ping_length
+
+    async def watch_pings(self):
+        while self.is_connected() and Application.RUNNING:
+            await asyncio.sleep(1)
+            if self.ping_timed_out():
+                Logger.warning(f"{self._server.get_name()}: IRC PING timed out")
+                self.disconnected()
+                return
 
     #########
     # Parse #
