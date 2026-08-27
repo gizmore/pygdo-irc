@@ -14,6 +14,24 @@ mt_irc_part = "Part"
 md_irc_part = "Leave an IRC channel and disable its auto-join."
 msg_irc_part_channel = "Left %s and disabled its auto-join."
 
+##############
+# IRC Sign-Up #
+##############
+mt_irc_signup = "Register IRC nickname"
+md_irc_signup = "Register the configured nickname with NickServ."
+msg_irc_signup_registered = "IRC nickname %s is already registered."
+msg_irc_signup_pending = "NickServ registration for %s is awaiting email confirmation."
+msg_irc_signup_sent = "Requested NickServ registration for %s with %s."
+err_irc_signup_password_unknown = "IRC nickname %s is registered, but its NickServ password is unknown. Recover or reset it through NickServ."
+
+###############
+# IRC Confirm #
+###############
+mt_irc_confirm = "Confirm IRC nickname"
+md_irc_confirm = "Confirm a pending NickServ registration."
+msg_irc_confirm_sent = "Sent the NickServ confirmation to %s."
+err_irc_confirm_not_irc = "%s is not an IRC server."
+
 #############
 # autologin #
 #############

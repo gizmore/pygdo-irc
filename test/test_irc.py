@@ -2,7 +2,7 @@ import os
 import re
 import time
 import unittest
-from unittest.mock import patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 from gdo.base.Application import Application
 from gdo.base.Exceptions import GDOParamError
@@ -16,6 +16,8 @@ from gdo.irc.connector.IRC import IRC
 from gdo.irc.connector.IRCWriter import IRCWriter
 from gdo.irc.IRCUtil import IRCUtil
 from gdo.irc.method.CMD_PRIVMSG import CMD_PRIVMSG
+from gdo.irc.method.signup import signup
+from gdo.message.GDT_HTML import GDT_HTML
 from gdo.core.method.launch import launch
 from gdotest.TestUtil import reinstall_module, cli_plug, web_gizmore, install_module, GDOTestCase
 
@@ -109,6 +111,109 @@ class IRCPingTest(unittest.TestCase):
         connector.got_ping(160.0)
         self.assertFalse(connector.ping_timed_out(220.0))
         self.assertTrue(connector.ping_timed_out(221.0))
+
+
+class IRCSignupTest(unittest.IsolatedAsyncioTestCase):
+
+    async def asyncSetUp(self):
+        Application.mode(Mode.render_irc)
+
+    async def test_registers_unregistered_nickname_and_saves_password(self):
+        server = MagicMock()
+        server.gdo_val.return_value = ''
+        server.get_username.return_value = 'Dog'
+        connector = MagicMock()
+        connector.send_raw = AsyncMock()
+        method = signup()
+        method._env_server = server
+
+        with (
+            patch.object(method, 'get_config_server_val', return_value=''),
+            patch.object(method, 'get_config_server_value', return_value=False),
+            patch.object(method, 'save_config_server'),
+            patch.object(method, 'irc_connector', return_value=connector),
+            patch.object(method, 'reply', return_value=GDT_HTML()),
+        ):
+            await method.gdo_execute()
+
+        command = connector.send_raw.await_args.args[0]
+        self.assertTrue(command.startswith('PRIVMSG NickServ :REGISTER '))
+        self.assertTrue(command.endswith(' mira@mira-gpt.org'))
+        password = command.split()[3]
+        self.assertEqual(32, len(password))
+        server.save_val.assert_not_called()
+
+    async def test_does_not_register_nickname_with_a_saved_password(self):
+        server = MagicMock()
+        server.gdo_val.return_value = 'already-registered'
+        server.get_username.return_value = 'Dog'
+        connector = MagicMock()
+        connector.send_raw = AsyncMock()
+        method = signup()
+        method._env_server = server
+
+        with (
+            patch.object(method, 'irc_connector', return_value=connector),
+            patch.object(method, 'reply', return_value=GDT_HTML()),
+        ):
+            await method.gdo_execute()
+
+        connector.send_raw.assert_not_awaited()
+        server.save_val.assert_not_called()
+
+    async def test_promotes_pending_password_only_for_confirmed_nickname(self):
+        server = MagicMock()
+        server.get_username.return_value = 'Dog'
+        method = signup()
+        method._env_server = server
+
+        with (
+            patch.object(method, 'get_config_server_val', return_value='pending-secret'),
+            patch.object(method, 'save_config_server') as save_pending,
+        ):
+            confirmed = await method.on_nickserv_notice(
+                'Nickname Dog has been confirmed.'
+            )
+
+        self.assertTrue(confirmed)
+        server.save_val.assert_called_once_with('serv_password', 'pending-secret')
+        self.assertEqual(
+            [
+                ('pending_password', ''),
+                ('known_registered', '1'),
+            ],
+            [call.args for call in save_pending.call_args_list],
+        )
+
+    def test_ignores_unconfirmed_or_other_nickserv_notices(self):
+        self.assertFalse(signup.is_registration_confirmed(
+            'Dog', 'An email containing activation instructions has been sent.'
+        ))
+        self.assertFalse(signup.is_registration_confirmed(
+            'Dog', 'Nickname Cat has been confirmed.'
+        ))
+
+    async def test_discards_pending_password_when_nickserv_reports_registered(self):
+        server = MagicMock()
+        server.get_username.return_value = 'Dog'
+        method = signup()
+        method._env_server = server
+
+        with (
+            patch.object(method, 'get_config_server_val', return_value='pending-secret'),
+            patch.object(method, 'save_config_server') as save_config,
+        ):
+            confirmed = await method.on_nickserv_notice('Your nick is already registered.')
+
+        self.assertFalse(confirmed)
+        server.save_val.assert_not_called()
+        self.assertEqual(
+            [
+                ("pending_password", ''),
+                ("known_registered", '1'),
+            ],
+            [call.args for call in save_config.call_args_list],
+        )
 
 
 class IRCTestCase(GDOTestCase):
