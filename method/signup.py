@@ -75,6 +75,10 @@ class signup(IRCCommand):
     def is_registration_confirmed(nickname: str, text: str) -> bool:
         message = text.casefold()
         nick = nickname.casefold()
+        # Anope on GermanLeets confirms registration by echoing the generated
+        # password, without repeating the nickname.
+        if 'dein passwort ist' in message or 'your password is' in message:
+            return True
         if nick not in message or 'not registered' in message or 'already registered' in message:
             return False
         return any(marker in message for marker in (

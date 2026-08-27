@@ -221,6 +221,11 @@ class IRCSignupTest(unittest.IsolatedAsyncioTestCase):
             'Dog', 'Nickname Cat has been confirmed.'
         ))
 
+    def test_recognises_germanleets_password_confirmation(self):
+        self.assertTrue(signup.is_registration_confirmed(
+            'mira', 'Dein Passwort ist ein-registrierungs-passwort.'
+        ))
+
     async def test_discards_pending_password_when_nickserv_reports_registered(self):
         server = MagicMock()
         server.get_username.return_value = 'Dog'
