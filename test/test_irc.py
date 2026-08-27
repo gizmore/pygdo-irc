@@ -117,6 +117,7 @@ class IRCSignupTest(unittest.IsolatedAsyncioTestCase):
 
     async def asyncSetUp(self):
         Application.mode(Mode.render_irc)
+        Application.STORAGE.lang = 'en'
 
     async def test_registers_unregistered_nickname_and_saves_password(self):
         server = MagicMock()
@@ -128,6 +129,7 @@ class IRCSignupTest(unittest.IsolatedAsyncioTestCase):
         method._env_server = server
 
         with (
+            patch.object(method, 'param_value', side_effect=lambda key, default=False: default),
             patch.object(method, 'get_config_server_val', return_value=''),
             patch.object(method, 'get_config_server_value', return_value=False),
             patch.object(method, 'save_config_server'),
@@ -153,6 +155,7 @@ class IRCSignupTest(unittest.IsolatedAsyncioTestCase):
         method._env_server = server
 
         with (
+            patch.object(method, 'param_value', side_effect=lambda key, default=False: default),
             patch.object(method, 'irc_connector', return_value=connector),
             patch.object(method, 'reply', return_value=GDT_HTML()),
         ):
@@ -160,6 +163,31 @@ class IRCSignupTest(unittest.IsolatedAsyncioTestCase):
 
         connector.send_raw.assert_not_awaited()
         server.save_val.assert_not_called()
+
+    async def test_force_resends_the_pending_registration(self):
+        server = MagicMock()
+        server.gdo_val.return_value = ''
+        server.get_username.return_value = 'mira'
+        connector = MagicMock()
+        connector.send_raw = AsyncMock()
+        method = signup()
+        method._env_server = server
+
+        with (
+            patch.object(method, 'param_value', side_effect=lambda key, default=False: key == 'force'),
+            patch.object(method, 'get_config_server_val', return_value='pending-secret'),
+            patch.object(method, 'get_config_server_value', return_value=False),
+            patch.object(method, 'save_config_server') as save_config,
+            patch.object(method, 'irc_connector', return_value=connector),
+            patch.object(method, 'reply', return_value=GDT_HTML()),
+        ):
+            await method.gdo_execute()
+
+        self.assertEqual(
+            'PRIVMSG NickServ :REGISTER pending-secret mira@mira-gpt.org',
+            connector.send_raw.await_args.args[0],
+        )
+        save_config.assert_called_once_with('pending_password', 'pending-secret')
 
     async def test_promotes_pending_password_only_for_confirmed_nickname(self):
         server = MagicMock()

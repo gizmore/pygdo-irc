@@ -30,7 +30,10 @@ class signup(IRCCommand):
 
     def gdo_parameters(self) -> list[GDT]:
         """An explicit IRC server also makes signup usable from TCP/WebSocket."""
-        return [GDT_Server('server').positional()]
+        return [
+            GDT_Server('server').positional(),
+            GDT_Bool('force').not_null().initial('0'),
+        ]
 
     async def gdo_execute(self) -> GDT:
         selected_server = self.param_value('server', False)
@@ -43,10 +46,11 @@ class signup(IRCCommand):
             return self.reply('msg_irc_signup_registered', (server.get_username(),))
         if self.get_config_server_value(self.KNOWN_REGISTERED):
             return self.err('err_irc_signup_password_unknown', (server.get_username(),))
-        if self.get_config_server_val(self.PENDING_PASSWORD):
+        password = self.get_config_server_val(self.PENDING_PASSWORD)
+        if password and not self.param_value('force'):
             return self.reply('msg_irc_signup_pending', (server.get_username(),))
 
-        password = Random.token(16)
+        password = password or Random.token(16)
         await self.irc_connector().send_raw(
             f'PRIVMSG NickServ :REGISTER {password} {self.NICKSERV_EMAIL}'
         )
