@@ -164,7 +164,7 @@ class IRCSignupTest(unittest.IsolatedAsyncioTestCase):
         connector.send_raw.assert_not_awaited()
         server.save_val.assert_not_called()
 
-    async def test_force_resends_the_pending_registration(self):
+    async def test_force_identifies_the_pending_registration(self):
         server = MagicMock()
         server.gdo_val.return_value = ''
         server.get_username.return_value = 'mira'
@@ -177,17 +177,23 @@ class IRCSignupTest(unittest.IsolatedAsyncioTestCase):
             patch.object(method, 'param_value', side_effect=lambda key, default=False: key == 'force'),
             patch.object(method, 'get_config_server_val', return_value='pending-secret'),
             patch.object(method, 'get_config_server_value', return_value=False),
-            patch.object(method, 'save_config_server') as save_config,
             patch.object(method, 'irc_connector', return_value=connector),
             patch.object(method, 'reply', return_value=GDT_HTML()),
         ):
             await method.gdo_execute()
 
         self.assertEqual(
-            'PRIVMSG NickServ :REGISTER pending-secret mira@mira-gpt.org',
+            'PRIVMSG NickServ :IDENTIFY pending-secret',
             connector.send_raw.await_args.args[0],
         )
-        save_config.assert_called_once_with('pending_password', 'pending-secret')
+
+    def test_recognises_identification_confirmation(self):
+        self.assertTrue(signup.is_identification_confirmed(
+            'mira-gpt', 'You are now identified for mira-gpt.'
+        ))
+        self.assertFalse(signup.is_identification_confirmed(
+            'mira-gpt', 'You are now identified for another-nick.'
+        ))
 
     async def test_promotes_pending_password_only_for_confirmed_nickname(self):
         server = MagicMock()

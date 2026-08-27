@@ -50,7 +50,15 @@ class signup(IRCCommand):
         if password and not self.param_value('force'):
             return self.reply('msg_irc_signup_pending', (server.get_username(),))
 
-        password = password or Random.token(16)
+        # After the provider's email verification, staff explicitly rerun the
+        # command with ``force``.  Verify the pending credential with NickServ
+        # before promoting it to the server password; do not expose it through
+        # a chat response or a configuration form.
+        if password:
+            await self.irc_connector().send_raw(f'PRIVMSG NickServ :IDENTIFY {password}')
+            return self.reply('msg_irc_signup_identifying', (server.get_username(),))
+
+        password = Random.token(16)
         await self.irc_connector().send_raw(
             f'PRIVMSG NickServ :REGISTER {password} {self.NICKSERV_EMAIL}'
         )
@@ -61,7 +69,9 @@ class signup(IRCCommand):
         """Promote the pending password only after NickServ confirms the nick."""
         password = self.get_config_server_val(self.PENDING_PASSWORD)
         nickname = self._env_server.get_username()
-        if not password or not self.is_registration_confirmed(nickname, text):
+        confirmed = self.is_registration_confirmed(nickname, text)
+        identified = self.is_identification_confirmed(nickname, text)
+        if not password or not (confirmed or identified):
             if password and self.is_already_registered(text):
                 self.save_config_server(self.PENDING_PASSWORD, '')
                 self.save_config_server(self.KNOWN_REGISTERED, '1')
@@ -87,6 +97,16 @@ class signup(IRCCommand):
             'has been confirmed',
             'has been verified',
             f'nickname {nick} registered',
+        ))
+
+    @staticmethod
+    def is_identification_confirmed(nickname: str, text: str) -> bool:
+        message = text.casefold()
+        nick = nickname.casefold()
+        return nick in message and any(marker in message for marker in (
+            'you are now identified',
+            'you are now logged in',
+            'successfully identified',
         ))
 
     @staticmethod

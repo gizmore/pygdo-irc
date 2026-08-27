@@ -21,6 +21,7 @@ mt_irc_signup = "Register IRC nickname"
 md_irc_signup = "Register the configured nickname with NickServ."
 msg_irc_signup_registered = "IRC nickname %s is already registered."
 msg_irc_signup_pending = "NickServ registration for %s is awaiting email confirmation."
+msg_irc_signup_identifying = "Verifying the pending NickServ credential for %s."
 msg_irc_signup_sent = "Requested NickServ registration for %s with %s."
 err_irc_signup_password_unknown = "IRC nickname %s is registered, but its NickServ password is unknown. Recover or reset it through NickServ."
 
