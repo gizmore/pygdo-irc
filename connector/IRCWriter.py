@@ -16,6 +16,12 @@ class IRCWriter(Thread):
     _connector: 'IRC'
     _queue: IRCSendQueue
 
+    # IRC servers add ``:nick!user@host `` when relaying a client line.  The
+    # configured line limit applies to that final wire line on strict servers,
+    # not merely to our outgoing ``PRIVMSG`` command.  Keep a conservative
+    # reserve so formatting control bytes cannot make the visible tail vanish.
+    SERVER_PREFIX_RESERVE = 64
+
     def __init__(self, irc_connector):
         super().__init__()
         self._connector = irc_connector
@@ -46,7 +52,7 @@ class IRCWriter(Thread):
         Logger.debug(f"IRCWriter.write({prefix}{message._result})")
         from gdo.irc.method.CMD_PRIVMSG import CMD_PRIVMSG
         line_limit = CMD_PRIVMSG().env_copy(message).get_max_msg_len()
-        chunk_size = line_limit - len((prefix + '\r\n').encode('utf-8'))
+        chunk_size = line_limit - len((prefix + '\r\n').encode('utf-8')) - self.SERVER_PREFIX_RESERVE
         chunks = self.split_utf8_boundary(message._result, chunk_size)
         for chunk in chunks:
             msg = Message(message._message, message._env_mode).env_copy(message).result(prefix + chunk)

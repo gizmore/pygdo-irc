@@ -41,7 +41,7 @@ class IRCWriterTest(unittest.IsolatedAsyncioTestCase):
         Application.mode(Mode.render_irc)
         prefix = 'PRIVMSG #dog :Dog: '
         text = 'wechall.defcon, wechall.import_wc5 🙂🙂🙂🙂🙂'
-        line_limit = len(prefix.encode('utf-8')) + 18
+        line_limit = len(prefix.encode('utf-8')) + IRCWriter.SERVER_PREFIX_RESERVE + 18
         sent = []
 
         class Queue:
@@ -67,7 +67,10 @@ class IRCWriterTest(unittest.IsolatedAsyncioTestCase):
         self.assertGreater(len(sent), 1)
         self.assertTrue(all(chunk.startswith(prefix) for chunk in sent))
         self.assertEqual(text, ''.join(chunk[len(prefix):] for chunk in sent))
-        self.assertTrue(all(len((chunk + '\r\n').encode('utf-8')) <= line_limit for chunk in sent))
+        self.assertTrue(all(
+            len((chunk + '\r\n').encode('utf-8')) + IRCWriter.SERVER_PREFIX_RESERVE <= line_limit
+            for chunk in sent
+        ))
 
 
 class IRCUtilTest(unittest.TestCase):
