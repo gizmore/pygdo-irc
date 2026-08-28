@@ -33,6 +33,15 @@ md_irc_confirm = "Confirm a pending NickServ registration."
 msg_irc_confirm_sent = "Sent the NickServ confirmation to %s."
 err_irc_confirm_not_irc = "%s is not an IRC server."
 
+############
+# IRC Nick #
+############
+mt_irc_nick = "Change IRC nickname"
+md_irc_nick = "Change the current IRC nickname; permanent changes replace the configured login nickname."
+msg_irc_nick_sent = "Requested IRC nickname change to %s."
+msg_irc_nick_current = "IRC nickname is already %s."
+msg_irc_nick_identifying = "Identifying with NickServ as %s."
+
 #############
 # autologin #
 #############

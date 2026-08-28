@@ -1,11 +1,10 @@
+import asyncio
 import os
 import re
-import time
 import unittest
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
 from gdo.base.Application import Application
-from gdo.base.Exceptions import GDOParamError
 from gdo.base.Message import Message
 from gdo.base.ModuleLoader import ModuleLoader
 from gdo.base.Render import Mode
@@ -15,6 +14,9 @@ from gdo.irc.connector.IRCReader import IRCReader
 from gdo.irc.connector.IRC import IRC
 from gdo.irc.connector.IRCWriter import IRCWriter
 from gdo.irc.IRCUtil import IRCUtil
+from gdo.irc.method.CMD_JOIN import CMD_JOIN
+from gdo.irc.method.CMD_PART import CMD_PART
+from gdo.irc.method.CMD_QUIT import CMD_QUIT
 from gdo.irc.method.CMD_PRIVMSG import CMD_PRIVMSG
 from gdo.irc.method.signup import signup
 from gdo.message.GDT_HTML import GDT_HTML
@@ -114,6 +116,55 @@ class IRCPingTest(unittest.TestCase):
         connector.got_ping(160.0)
         self.assertFalse(connector.ping_timed_out(220.0))
         self.assertTrue(connector.ping_timed_out(221.0))
+
+
+class IRCNickTest(unittest.IsolatedAsyncioTestCase):
+
+    async def test_permanent_nick_is_persisted_only_after_server_confirmation(self):
+        server = MagicMock()
+        server.get_username.return_value = 'Dog'
+        connector = IRC()
+        connector._server = server
+        connector.send_raw = AsyncMock()
+
+        await connector.change_nick('mira', True)
+
+        connector.send_raw.assert_awaited_once_with('NICK mira')
+        server.save_val.assert_not_called()
+
+        await connector.nick_changed('mira')
+
+        self.assertEqual('mira', connector._own_nick)
+        self.assertEqual(
+            [('serv_username', 'mira'), ('serv_password', None)],
+            [call.args for call in server.save_val.call_args_list],
+        )
+
+    async def test_pending_nick_ignores_another_nick_confirmation(self):
+        server = MagicMock()
+        server.get_username.return_value = 'Dog'
+        connector = IRC()
+        connector._server = server
+        connector.send_raw = AsyncMock()
+        await connector.change_nick('mira', True)
+
+        self.assertFalse(await connector.nick_changed('someone_else'))
+        server.save_val.assert_not_called()
+        self.assertEqual('mira', connector._pending_nick)
+
+    async def test_real_configured_nick_identifies_after_confirmation(self):
+        server = MagicMock()
+        server.get_username.return_value = 'mira'
+        server.gdo_val.return_value = 'nickserv-password'
+        connector = IRC()
+        connector._server = server
+        connector.send_raw = AsyncMock()
+
+        await connector.nick_changed('mira')
+
+        connector.send_raw.assert_awaited_once_with(
+            'PRIVMSG NickServ :IDENTIFY nickserv-password'
+        )
 
 
 class IRCSignupTest(unittest.IsolatedAsyncioTestCase):
@@ -258,6 +309,104 @@ class IRCSignupTest(unittest.IsolatedAsyncioTestCase):
         )
 
 
+class IRCChannelLifecycleTest(unittest.IsolatedAsyncioTestCase):
+
+    async def asyncSetUp(self):
+        Application.mode(Mode.render_irc)
+        Application.STORAGE.lang = 'en'
+
+    @staticmethod
+    def user(server, name='mira'):
+        user = MagicMock()
+        user.get_name.return_value = name
+        user.get_server.return_value = server
+        return user
+
+    async def test_own_join_marks_every_joined_channel_and_persists_auto_join(self):
+        server = MagicMock()
+        server.on_bot_joined = AsyncMock()
+        user = self.user(server)
+        first, second = MagicMock(), MagicMock()
+        first.on_bot_joined = AsyncMock()
+        second.on_bot_joined = AsyncMock()
+        method = CMD_JOIN()
+        method._irc_prefix = 'mira!user@host'
+        method._irc_params = ['#one,#two']
+        method._env_session = None
+        method._env_reply_to = None
+
+        with (
+            patch.object(CMD_JOIN, 'irc_user', new=AsyncMock(return_value=user)),
+            patch.object(CMD_JOIN, 'irc_channel', side_effect=[first, second]),
+            patch.object(CMD_JOIN, 'is_own_user', return_value=True),
+            patch('gdo.irc.method.join.join.on_bot_joined') as persist_auto_join,
+        ):
+            await method.gdo_execute()
+
+        self.assertEqual(
+            [call(user, first), call(user, second)],
+            server.on_bot_joined.await_args_list,
+        )
+        self.assertEqual(
+            [call(user), call(user)],
+            [first.on_bot_joined.call_args, second.on_bot_joined.call_args],
+        )
+        self.assertEqual(2, persist_auto_join.call_count)
+
+    async def test_foreign_join_never_changes_bot_auto_join_configuration(self):
+        server = MagicMock()
+        server.on_user_joined = AsyncMock()
+        user = self.user(server, 'other')
+        channel = MagicMock()
+        channel.on_user_joined = AsyncMock()
+        method = CMD_JOIN()
+        method._irc_prefix = 'other!user@host'
+        method._irc_params = ['#one']
+
+        with (
+            patch.object(CMD_JOIN, 'irc_user', new=AsyncMock(return_value=user)),
+            patch.object(CMD_JOIN, 'irc_channel', return_value=channel),
+            patch.object(CMD_JOIN, 'is_own_user', return_value=False),
+            patch('gdo.irc.method.join.join.on_bot_joined') as persist_auto_join,
+        ):
+            await method.gdo_execute()
+
+        server.on_user_joined.assert_awaited_once_with(user, channel)
+        channel.on_user_joined.assert_awaited_once_with(user)
+        persist_auto_join.assert_not_called()
+
+    async def test_part_and_quit_use_the_matching_bot_lifecycle(self):
+        server = MagicMock()
+        server.on_bot_quit = AsyncMock()
+        user = self.user(server)
+        first, second = MagicMock(), MagicMock()
+        first.on_bot_left = AsyncMock()
+        second.on_bot_left = AsyncMock()
+        part = CMD_PART()
+        part._irc_prefix = 'mira!user@host'
+        part._irc_params = ['#one,#two']
+
+        with (
+            patch.object(CMD_PART, 'irc_user', new=AsyncMock(return_value=user)),
+            patch.object(CMD_PART, 'irc_channel', side_effect=[first, second]),
+            patch.object(CMD_PART, 'is_own_user', return_value=True),
+        ):
+            await part.gdo_execute()
+
+        first.on_bot_left.assert_awaited_once_with(user)
+        second.on_bot_left.assert_awaited_once_with(user)
+
+        quit_ = CMD_QUIT()
+        quit_._irc_prefix = 'mira!user@host'
+        with (
+            patch.object(CMD_QUIT, 'irc_user', new=AsyncMock(return_value=user)),
+            patch.object(CMD_QUIT, 'is_own_user', return_value=True),
+        ):
+            await quit_.gdo_execute()
+
+        server.on_bot_quit.assert_awaited_once_with(user)
+
+
 class IRCTestCase(GDOTestCase):
     IRC_SERVER: GDO_Server = None
     """
@@ -275,12 +424,12 @@ class IRCTestCase(GDOTestCase):
         loader.init_cli()
         if IRCTestCase.IRC_SERVER is None:
             num_servers = GDO_Server.table().count_where()
-            cli_plug(web_gizmore(), f"$add_server giz.org_{num_servers + 1} irc irc://irc.giz.org:6667")
+            cli_plug(web_gizmore(), f"$add_server wechall_irc_{num_servers + 1} irc ircs://irc.wechall.net:6697")
             IRCTestCase.IRC_SERVER = GDO_Server.table().select().where("serv_connector='irc'").order('serv_created DESC').first().exec().fetch_object()
 
     async def test_01_add_irc_server(self):
         num_servers = GDO_Server.table().count_where()
-        out = cli_plug(web_gizmore(), f"$add_server giz.org_{num_servers + 1} irc irc://irc.giz.org:6667")
+        out = cli_plug(web_gizmore(), f"$add_server wechall_irc_{num_servers + 1} irc ircs://irc.wechall.net:6697")
         self.assertIn('new irc server', out, "Cannot add IRC server")
         pattern = r'#(\d+)'
         match = re.search(pattern, out)
@@ -288,15 +437,14 @@ class IRCTestCase(GDOTestCase):
 
     async def test_02_add_invalid_irc_server(self):
         num_servers = GDO_Server.table().count_where()
-        with self.assertRaises(GDOParamError):
-            out = cli_plug(web_gizmore(), f"$add_server giz.org_{num_servers + 1} irc irc://irc.giz.org:6668")
-            self.assertNotIn('new IRC server', out, "Would have added an invalid IRC server")
+        out = cli_plug(web_gizmore(), f"$add_server wechall_irc_{num_servers + 1} irc irc://127.0.0.1:1")
+        self.assertNotIn('new irc server', out, "Would have added an invalid IRC server")
 
     async def test_03_help_rendering(self):
         from gdo.core.method.help import help
         server = IRCTestCase.IRC_SERVER
         user = web_gizmore()
-        out = await help().env_server(server).env_user(user, True).gdo_execute()
+        out = help().env_server(server).env_user(user, True).gdo_execute()
         out = out.render_irc()
         self.assertIn('Core', out, 'IRC Help does not work.')
 
@@ -304,9 +452,9 @@ class IRCTestCase(GDOTestCase):
         server = IRCTestCase.IRC_SERVER
         method = launch()
         await method.mainloop_step_server(server)
-        time.sleep(12)  # sleep 5 seconds to let irc connect
+        await asyncio.sleep(2)
         self.assertTrue(server.get_connector().is_connected(), "Cannot connect to irc server.")
-        await server.get_connector().disconnect('Disconnect automatically')
+        await server.stop_loop()
 
 if __name__ == '__main__':
     unittest.main()

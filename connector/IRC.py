@@ -32,6 +32,8 @@ class IRC(Connector):
     _last_ping: float|None
     _ping_length: float|None
     _ping_watchdog: asyncio.Task|None
+    _pending_nick: str|None
+    _pending_nick_permanent: bool
 
     def __init__(self):
         super().__init__()
@@ -43,6 +45,8 @@ class IRC(Connector):
         self._last_ping = None
         self._ping_length = None
         self._ping_watchdog = None
+        self._pending_nick = None
+        self._pending_nick_permanent = False
 
     def render_user_connect_help(self) -> str:
         url = self._server.get_url()
@@ -119,6 +123,8 @@ class IRC(Connector):
             writer.sock.close()
         if self._ping_watchdog:
             self._ping_watchdog.cancel()
+            if self._ping_watchdog in Application.TASKS:
+                Application.TASKS.remove(self._ping_watchdog)
             self._ping_watchdog = None
         self._recv_thread = None
         self._send_thread = None
@@ -221,6 +227,28 @@ class IRC(Connector):
         nickname = f"{self.get_nickname()}_{Random.mrand(1, 99):02d}"
         self._own_nick = nickname
         await self.send_raw(f"NICK {nickname}")
+
+    async def change_nick(self, nickname: str, permanent: bool = False):
+        """Request a nick change; only CMD_NICK confirms it later."""
+        self._pending_nick = nickname
+        self._pending_nick_permanent = permanent
+        await self.send_raw(f'NICK {nickname}')
+
+    async def nick_changed(self, nickname: str):
+        """Apply a server-confirmed own NICK, never a local request alone."""
+        if self._pending_nick and nickname.casefold() != self._pending_nick.casefold():
+            return False
+        self._own_nick = nickname
+        configured = self.get_nickname()
+        if self._pending_nick_permanent:
+            self._server.save_val('serv_username', nickname)
+            self._server.save_val('serv_password', None)
+        self._pending_nick = None
+        self._pending_nick_permanent = False
+        if nickname.casefold() == configured.casefold():
+            if password := self._server.gdo_val('serv_password'):
+                await self.send_raw(f'PRIVMSG NickServ :IDENTIFY {password}')
+        return True
 
     async def send_quit(self, message: str):
         await self.send_raw(f"QUIT {message}")
