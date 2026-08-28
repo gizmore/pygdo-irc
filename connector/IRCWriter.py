@@ -40,10 +40,8 @@ class IRCWriter(Thread):
             while self._connector.is_connected() and Application.RUNNING:
                 message = await self._queue.get_next_message_to_process()
                 if message:
+                    await self._queue.wait_for_send_slot()
                     await self.write_now(message._result)
-                    await asyncio.sleep(self._queue.get_next_sleep_time())
-                else:
-                    await asyncio.sleep(0.05)
         except Exception as e:
             Logger.exception(e)
             self._connector.disconnected()
@@ -56,10 +54,10 @@ class IRCWriter(Thread):
         chunks = self.split_utf8_boundary(message._result, chunk_size)
         for chunk in chunks:
             msg = Message(message._message, message._env_mode).env_copy(message).result(prefix + chunk)
-            if self._queue.get_next_sleep_time() == 0:
-                await self.write_now(msg._result)
-            else:
-                await self._queue.append(msg)
+            # Only IRC protocol commands use write_now().  User-visible
+            # replies always pass through the flood queue, including chunks of
+            # one long response.
+            await self._queue.append(msg)
 
     @staticmethod
     def split_utf8_boundary(text: str, byte_limit: int) -> list[str]:

@@ -11,10 +11,10 @@ class CMD_005(IRCCommand):
 
     def gdo_execute(self) -> GDT:
         for setting in self._irc_params[1:]:
-            try:
-                key, val = setting.split('=')
-                if key == 'LINELEN':
-                    CMD_PRIVMSG().env_copy(self).save_config_server('max_msg_len', val)
-            except:
-                pass
+            key, separator, val = setting.partition('=')
+            if key == 'LINELEN' and separator and val.isdecimal():
+                # ISUPPORT advertises the complete IRC wire-line length.  It
+                # is server-specific and therefore belongs in method/server
+                # configuration, where IRCWriter reads it for every reply.
+                CMD_PRIVMSG().env_copy(self).save_config_server('max_msg_len', val)
         return self.empty()

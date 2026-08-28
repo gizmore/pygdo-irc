@@ -12,10 +12,13 @@ from gdo.base.Logger import Logger
 from gdo.core.GDO_Server import GDO_Server
 from gdo.irc.connector.IRCReader import IRCReader
 from gdo.irc.connector.IRC import IRC
+from gdo.irc.connector.IRCSendQueue import IRCSendQueue
 from gdo.irc.connector.IRCWriter import IRCWriter
 from gdo.irc.IRCUtil import IRCUtil
 from gdo.irc.method.CMD_JOIN import CMD_JOIN
 from gdo.irc.method.CMD_PART import CMD_PART
+from gdo.irc.method.CMD_NOTICE import CMD_NOTICE
+from gdo.irc.method.CMD_005 import CMD_005
 from gdo.irc.method.CMD_QUIT import CMD_QUIT
 from gdo.irc.method.CMD_PRIVMSG import CMD_PRIVMSG
 from gdo.irc.method.signup import signup
@@ -38,7 +41,7 @@ class IRCPlug:
 
 class IRCWriterTest(unittest.IsolatedAsyncioTestCase):
 
-    async def test_immediate_chunks_respect_prefix_and_utf8_line_limit(self):
+    async def test_queued_chunks_respect_prefix_and_utf8_line_limit(self):
         """Chunks preserve content and fit the complete IRC line in UTF-8."""
         Application.mode(Mode.render_irc)
         prefix = 'PRIVMSG #dog :Dog: '
@@ -47,8 +50,11 @@ class IRCWriterTest(unittest.IsolatedAsyncioTestCase):
         sent = []
 
         class Queue:
-            def get_next_sleep_time(self):
-                return 0
+            def __init__(self):
+                self.messages = []
+
+            async def append(self, message):
+                self.messages.append(message)
 
         class Writer(IRCWriter):
             async def write_now(self, message):
@@ -66,19 +72,93 @@ class IRCWriterTest(unittest.IsolatedAsyncioTestCase):
         ):
             await writer.write(prefix, message)
 
-        self.assertGreater(len(sent), 1)
-        self.assertTrue(all(chunk.startswith(prefix) for chunk in sent))
-        self.assertEqual(text, ''.join(chunk[len(prefix):] for chunk in sent))
+        self.assertEqual([], sent)
+        chunks = [chunk._result for chunk in writer._queue.messages]
+        self.assertGreater(len(chunks), 1)
+        self.assertTrue(all(chunk.startswith(prefix) for chunk in chunks))
+        self.assertEqual(text, ''.join(chunk[len(prefix):] for chunk in chunks))
         self.assertTrue(all(
             len((chunk + '\r\n').encode('utf-8')) + IRCWriter.SERVER_PREFIX_RESERVE <= line_limit
-            for chunk in sent
+            for chunk in chunks
         ))
+
+
+class IRCSendQueueTest(unittest.IsolatedAsyncioTestCase):
+
+    async def test_round_robins_waiting_users(self):
+        queue = IRCSendQueue(None)
+        first = type('User', (), {'get_id': lambda self: '1'})()
+        second = type('User', (), {'get_id': lambda self: '2'})()
+
+        def message(user, text):
+            msg = Message(text, Mode.render_irc).result(text)
+            msg._env_user = user
+            return msg
+
+        await queue.append(message(first, 'first-a'))
+        await queue.append(message(first, 'first-b'))
+        await queue.append(message(second, 'second-a'))
+
+        self.assertEqual(
+            ['first-a', 'second-a', 'first-b'],
+            [(await queue.get_next_message_to_process())._result for _ in range(3)],
+        )
+
+    async def test_rate_limiter_honours_burst_and_refill_period(self):
+        queue = IRCSendQueue(type('Connector', (), {'_server': object()})())
+        with patch.object(queue, 'get_rate_limit', return_value=(10.0, 2)), patch(
+            'gdo.irc.connector.IRCSendQueue.time.monotonic', side_effect=[100.0, 100.0, 100.0]
+        ):
+            await queue.wait_for_send_slot()
+            await queue.wait_for_send_slot()
+            self.assertEqual(0, queue._tokens)
 
 
 class IRCUtilTest(unittest.TestCase):
 
     def test_strip_owner_prefix(self):
         self.assertEqual('Founder', IRCUtil.strip_permission('~Founder'))
+
+
+class IRCNoticeTest(unittest.IsolatedAsyncioTestCase):
+
+    async def test_non_nickserv_notice_uses_the_privmsg_path(self):
+        method = CMD_NOTICE()
+        method._irc_prefix = 'tester!ident@host'
+        method._irc_params = ['#channel', '$ping']
+        expected = object()
+        with patch.object(CMD_PRIVMSG, 'gdo_execute', new=AsyncMock(return_value=expected)) as execute:
+            self.assertIs(expected, await method.gdo_execute())
+        execute.assert_awaited_once()
+
+
+class IRCISupportTest(unittest.TestCase):
+
+    def setUp(self):
+        Application.mode(Mode.render_irc)
+
+    @staticmethod
+    def method():
+        method = CMD_005()
+        method._env_server = None
+        method._env_channel = None
+        method._env_user = None
+        method._env_session = None
+        return method
+
+    def test_stores_advertised_line_length(self):
+        method = self.method()
+        method._irc_params = ['Dog', 'CHANTYPES=#', 'LINELEN=512', 'MAXTARGETS=20', 'are supported']
+        with patch.object(CMD_PRIVMSG, 'save_config_server') as save:
+            method.gdo_execute()
+        save.assert_called_once_with('max_msg_len', '512')
+
+    def test_ignores_malformed_line_length(self):
+        method = self.method()
+        method._irc_params = ['Dog', 'LINELEN=wide']
+        with patch.object(CMD_PRIVMSG, 'save_config_server') as save:
+            method.gdo_execute()
+        save.assert_not_called()
 
 
 class IRCReaderTest(unittest.IsolatedAsyncioTestCase):
