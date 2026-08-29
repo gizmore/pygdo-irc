@@ -26,7 +26,7 @@ class part(IRCCommand):
 
     async def gdo_execute(self) -> GDT:
         name = self.param_val('channel')
-        channel = self._env_server.get_or_create_channel(name)
+        channel = self.target_irc_channel(name)
 
         # auto_join belongs to the join method's channel configuration.
         join().env_copy(self).env_channel(channel).save_config_channel('auto_join', '0')

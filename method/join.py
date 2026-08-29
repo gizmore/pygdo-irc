@@ -27,6 +27,7 @@ class join(IRCCommand):
 
     async def gdo_execute(self) -> GDT:
         name = self.param_val('channel')
+        self.target_irc_channel(name)
         self.msg('msg_irc_join_channel', (html(name),))
         await self.irc_connector().send_raw(f"JOIN {name}")
         return self.empty()
