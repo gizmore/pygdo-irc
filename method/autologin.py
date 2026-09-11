@@ -13,6 +13,10 @@ class autologin(Method):
         return ''
 
     async def maybe_probe(self, user: GDO_User, original_message: Message):
+        # WHOIS is observable network traffic.  Only probe users who have
+        # authenticated manually and explicitly enabled IRC auto-login.
+        if not user.get_setting_value('irc_autologin'):
+            return False
         username = user.get_name_sid()
         if username in self.__class__.PROBES:
             probe = self.__class__.PROBES[username]

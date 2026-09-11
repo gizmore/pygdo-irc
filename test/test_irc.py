@@ -23,6 +23,7 @@ from gdo.irc.method.CMD_NOTICE import CMD_NOTICE
 from gdo.irc.method.CMD_005 import CMD_005
 from gdo.irc.method.CMD_QUIT import CMD_QUIT
 from gdo.irc.method.CMD_PRIVMSG import CMD_PRIVMSG
+from gdo.irc.method.autologin import autologin
 from gdo.irc.method.signup import signup
 from gdo.message.GDT_HTML import GDT_HTML
 from gdo.core.method.launch import launch
@@ -120,6 +121,24 @@ class IRCUtilTest(unittest.TestCase):
 
     def test_strip_owner_prefix(self):
         self.assertEqual('Founder', IRCUtil.strip_permission('~Founder'))
+
+
+class IRCAutoLoginTest(unittest.IsolatedAsyncioTestCase):
+
+    def setUp(self):
+        Application.mode(Mode.render_irc)
+
+    async def test_opted_out_user_is_never_whois_probed(self):
+        method = autologin()
+        connector = MagicMock()
+        connector.send_raw = AsyncMock()
+        method._env_server = MagicMock()
+        method._env_server.get_connector.return_value = connector
+        user = MagicMock()
+        user.get_setting_value.return_value = False
+
+        self.assertFalse(await method.maybe_probe(user, MagicMock()))
+        connector.send_raw.assert_not_awaited()
 
 
 class IRCServiceUserTest(unittest.IsolatedAsyncioTestCase):
