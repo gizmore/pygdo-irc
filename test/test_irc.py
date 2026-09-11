@@ -1,6 +1,7 @@
 import asyncio
 import os
 import re
+import ssl
 import unittest
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
@@ -40,6 +41,28 @@ class IRCPlug:
     def exec(self):
         connector = IRCTestCase.IRC_SERVER.get_connector()
         connector.process_message(self._msg)
+
+
+class IRCTLSContextTest(unittest.TestCase):
+
+    @staticmethod
+    def connector(validate: bool) -> IRC:
+        irc = IRC()
+        irc._server = type('Server', (), {'tls_validate': lambda self: validate})()
+        return irc
+
+    def test_tls_validation_is_enabled_by_default(self):
+        context = self.connector(True).tls_context({'tls': True})
+        self.assertTrue(context.check_hostname)
+        self.assertEqual(ssl.CERT_REQUIRED, context.verify_mode)
+
+    def test_tls_validation_can_be_disabled_per_server(self):
+        context = self.connector(False).tls_context({'tls': True})
+        self.assertFalse(context.check_hostname)
+        self.assertEqual(ssl.CERT_NONE, context.verify_mode)
+
+    def test_plain_irc_has_no_tls_context(self):
+        self.assertIsNone(self.connector(True).tls_context({'tls': False}))
 
 
 class IRCWriterTest(unittest.IsolatedAsyncioTestCase):

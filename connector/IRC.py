@@ -61,6 +61,15 @@ class IRC(Connector):
     def gdo_has_channels(self) -> bool:
         return True
 
+    def tls_context(self, url: dict) -> ssl.SSLContext | None:
+        if not url['tls']:
+            return None
+        context = ssl.create_default_context()
+        if not self._server.tls_validate():
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+        return context
+
     async def gdo_connect(self) -> bool:
         try:
             url = self._server.get_url()
@@ -69,12 +78,7 @@ class IRC(Connector):
             self._own_nick = self.get_nickname()
             Logger.debug(f"Connecting to {url['raw']}")
 
-            ssl_ctx = None
-            if url['tls']:
-                ssl_ctx = ssl.create_default_context()
-                # Optionally:
-                # ssl_ctx.check_hostname = True
-                # ssl_ctx.verify_mode = ssl.CERT_REQUIRED
+            ssl_ctx = self.tls_context(url)
 
             self._recv_thread = IRCReader(self)
             self._send_thread = IRCWriter(self)
