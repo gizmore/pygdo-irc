@@ -35,9 +35,16 @@ class module_irc(GDO_Module):
         ]
 
     def gdo_subscribe_events(self):
+        Application.EVENTS.subscribe('irc_registered', self.on_registered)
         Application.EVENTS.subscribe('irc_connected', self.on_connected)
         # Application.EVENTS.subscribe('irc_joined', self.on_joined)
         # Application.EVENTS.subscribe('irc_parted', self.on_parted)
+
+    async def on_registered(self, server: GDO_Server):
+        # Synchronous insert before user creation; the unique server name also
+        # guards against competing processes. Reconnects never insert again.
+        if not server.is_persisted():
+            server.insert()
 
     async def on_connected(self, server: GDO_Server, message: Message):
         # Logger.debug(f"IRC Server {server.render_name()} connected!")

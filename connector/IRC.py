@@ -47,6 +47,8 @@ class IRC(Connector):
         self._ping_watchdog = None
         self._pending_nick = None
         self._pending_nick_permanent = False
+        self._registration_complete = asyncio.Event()
+        self._io_tasks = []
 
     def render_user_connect_help(self) -> str:
         url = self._server.get_url()
@@ -71,6 +73,7 @@ class IRC(Connector):
         return context
 
     async def gdo_connect(self) -> bool:
+        self._registration_complete.clear()
         try:
             url = self._server.get_url()
             host = url['host']
@@ -101,6 +104,7 @@ class IRC(Connector):
                 Application.TASKS.append(reader_task)
                 Application.TASKS.append(writer_task)
                 Application.TASKS.append(self._ping_watchdog)
+                self._io_tasks = [reader_task, writer_task]
                 await self.send_user_cmd()
                 await asyncio.wait([reader_task, writer_task])
                 Logger.debug('connected!')
@@ -125,6 +129,12 @@ class IRC(Connector):
         writer = self._send_thread
         if writer and writer.sock:
             writer.sock.close()
+        for task in self._io_tasks:
+            if task is not asyncio.current_task():
+                task.cancel()
+            if task in Application.TASKS:
+                Application.TASKS.remove(task)
+        self._io_tasks = []
         if self._ping_watchdog:
             self._ping_watchdog.cancel()
             if self._ping_watchdog in Application.TASKS:
@@ -175,6 +185,10 @@ class IRC(Connector):
             Logger.debug(message)
 
             prefix, command, params = self.parse_message(message)
+
+            # Until registration there is no server ID for users/channels.
+            if not self._server.is_persisted() and command not in ('001', 'PING', '433', 'ERROR'):
+                return
 
             cmd = self.get_command(command)
             cmd._message = message

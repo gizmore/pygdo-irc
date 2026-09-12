@@ -27,6 +27,8 @@ class CMD_PRIVMSG(IRCCommand):
         return self.get_config_server_value('max_msg_len')
 
     async def gdo_execute(self) -> GDT:
+        if not self._irc_prefix or len(self._irc_params) < 2:
+            return self.empty()
         line = self._irc_params[1]
         self._env_user = await self.irc_user(self._irc_prefix)
         self._env_session = GDO_Session.for_user(self._env_user)
