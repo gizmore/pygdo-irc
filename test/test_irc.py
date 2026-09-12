@@ -48,7 +48,7 @@ class IRCTLSContextTest(unittest.TestCase):
     @staticmethod
     def connector(validate: bool) -> IRC:
         irc = IRC()
-        irc._server = type('Server', (), {'tls_validate': lambda self: validate})()
+        irc._server = type('Server', (), {'tls_client_check': lambda self: validate})()
         return irc
 
     def test_tls_validation_is_enabled_by_default(self):

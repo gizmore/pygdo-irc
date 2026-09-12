@@ -67,7 +67,7 @@ class IRC(Connector):
         if not url['tls']:
             return None
         context = ssl.create_default_context()
-        if not self._server.tls_validate():
+        if not self._server.tls_client_check():
             context.check_hostname = False
             context.verify_mode = ssl.CERT_NONE
         return context

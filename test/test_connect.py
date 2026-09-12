@@ -98,7 +98,7 @@ class ConnectTest(unittest.IsolatedAsyncioTestCase):
         with patch('gdo.irc.method.connect.GDO_Server.table') as table, patch('gdo.irc.method.connect.GDO_Server.blank', return_value=server) as blank:
             table.return_value.get_by_vals.return_value = None
             await method.gdo_execute()
-            self.assertEqual(cert, blank.call_args.args[0]['serv_tls_validate'])
+            self.assertEqual(cert, blank.call_args.args[0]['serv_tls_client_check'])
         self.assertFalse(connect.PENDING)
         if successful:
             self.assertEqual([server], launch.SERVERS)

@@ -36,7 +36,7 @@ class connect(Method):
         if key in self.PENDING or GDO_Server.table().get_by_vals({'serv_name': name}):
             return self.err('err_irc_connect_exists')
         server = GDO_Server.blank({'serv_name': name, 'serv_url': url, 'serv_connector': 'irc',
-                                   'serv_tls_validate': self.param_val('cert')})
+                                   'serv_tls_client_check': self.param_val('cert')})
         connector = server.get_connector()
         self.PENDING.add(key)
         worker = None
