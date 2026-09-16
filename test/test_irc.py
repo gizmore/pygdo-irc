@@ -178,7 +178,7 @@ class IRCNamesTest(unittest.IsolatedAsyncioTestCase):
             MagicMock(get_name=lambda: 'Alpha'),
         ]
         method = names()
-        method.param_val = MagicMock(return_value='#Cyberspace')
+        method.param_value = MagicMock(return_value=channel)
         method.target_irc_channel = MagicMock(return_value=channel)
         method.reply = MagicMock(return_value='reply')
 
