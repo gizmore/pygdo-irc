@@ -1,7 +1,9 @@
+import regex
+
 from gdo.base.GDT import GDT
 from gdo.base.Util import html
 from gdo.core.GDT_Bool import GDT_Bool
-from gdo.core.GDT_Channel import GDT_Channel
+from gdo.core.GDT_String import GDT_String
 from gdo.irc.IRCCommand import IRCCommand
 
 
@@ -16,7 +18,7 @@ class join(IRCCommand):
 
     def gdo_parameters(self) -> list[GDT]:
         return [
-            GDT_Channel('channel').connectors('irc').not_null(),
+            GDT_String('channel').pattern(r'^#{1,2}[a-z][-_a-z0-9]*$', regex.IGNORECASE).not_null().positional(),
         ]
 
     @classmethod
@@ -26,8 +28,8 @@ class join(IRCCommand):
         ]
 
     async def gdo_execute(self) -> GDT:
-        channel = self.target_irc_channel(self.param_value('channel'))
-        name = channel.get_name()
+        name = self.param_val('channel')
+        channel = self.target_irc_channel(self.irc_channel(name))
         self.msg('msg_irc_join_channel', (html(name),))
         await self.irc_connector().send_raw(f"JOIN {name}")
         return self.empty()
