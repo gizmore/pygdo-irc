@@ -11,6 +11,9 @@ class names(IRCCommand):
     def gdo_trigger(cls) -> str:
         return 'irc.names'
 
+    def gdo_method_hidden(self) -> bool:
+        return True
+
     def gdo_parameters(self) -> list[GDT]:
         return [
             GDT_Channel('channel').connectors('irc').default_current().not_null(),
