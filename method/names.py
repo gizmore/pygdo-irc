@@ -13,7 +13,7 @@ class names(IRCCommand):
 
     def gdo_parameters(self) -> list[GDT]:
         return [
-            GDT_IRCChannel('channel').not_null(),
+            GDT_IRCChannel('channel').initial(self._env_channel.get_name()).not_null(),
         ]
 
     async def gdo_execute(self) -> GDT:
