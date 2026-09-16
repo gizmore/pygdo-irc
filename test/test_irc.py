@@ -26,6 +26,7 @@ from gdo.irc.method.CMD_QUIT import CMD_QUIT
 from gdo.irc.method.CMD_PRIVMSG import CMD_PRIVMSG
 from gdo.irc.method.autologin import autologin
 from gdo.irc.method.signup import signup
+from gdo.irc.method.names import names
 from gdo.message.GDT_HTML import GDT_HTML
 from gdo.core.method.launch import launch
 from gdotest.TestUtil import reinstall_module, cli_plug, web_gizmore, install_module, GDOTestCase
@@ -162,6 +163,27 @@ class IRCAutoLoginTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertFalse(await method.maybe_probe(user, MagicMock()))
         connector.send_raw.assert_not_awaited()
+
+
+class IRCNamesTest(unittest.IsolatedAsyncioTestCase):
+
+    def setUp(self):
+        Application.mode(Mode.render_irc)
+
+    async def test_lists_the_connected_channel_snapshot(self):
+        channel = MagicMock()
+        channel.get_name.return_value = '#Cyberspace'
+        channel.online_users.return_value = [
+            MagicMock(get_name=lambda: 'zebra'),
+            MagicMock(get_name=lambda: 'Alpha'),
+        ]
+        method = names()
+        method.param_val = MagicMock(return_value='#Cyberspace')
+        method.target_irc_channel = MagicMock(return_value=channel)
+        method.reply = MagicMock(return_value='reply')
+
+        self.assertEqual('reply', await method.gdo_execute())
+        method.reply.assert_called_once_with('msg_irc_names', ('#Cyberspace', 'Alpha, zebra'))
 
 
 class IRCServiceUserTest(unittest.IsolatedAsyncioTestCase):

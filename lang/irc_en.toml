@@ -14,6 +14,13 @@ mt_irc_part = "Part"
 md_irc_part = "Leave an IRC channel and disable its auto-join."
 msg_irc_part_channel = "Left %s and disabled its auto-join."
 
+#############
+# IRC Names #
+#############
+mt_irc_names = "IRC users"
+md_irc_names = "List the currently known users in a connected IRC channel."
+msg_irc_names = "%s: %s"
+
 ##############
 # IRC Sign-Up #
 ##############
