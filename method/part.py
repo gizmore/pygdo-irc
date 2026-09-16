@@ -1,6 +1,6 @@
 from gdo.base.GDT import GDT
 from gdo.base.Util import html
-from gdo.irc.GDT_IRCChannel import GDT_IRCChannel
+from gdo.core.GDT_Channel import GDT_Channel
 from gdo.irc.IRCCommand import IRCCommand
 from gdo.irc.method.join import join
 
@@ -21,12 +21,12 @@ class part(IRCCommand):
         # In a channel, `$irc.part` parts that channel. An explicit name still
         # allows staff to remove another channel on the same IRC server.
         return [
-            GDT_IRCChannel('channel').initial(self._env_channel.get_name()).not_null(),
+            GDT_Channel('channel').connectors('irc').default_current().not_null(),
         ]
 
     async def gdo_execute(self) -> GDT:
-        name = self.param_val('channel')
-        channel = self.target_irc_channel(name)
+        channel = self.target_irc_channel(self.param_value('channel'))
+        name = channel.get_name()
 
         # auto_join belongs to the join method's channel configuration.
         join().env_copy(self).env_channel(channel).save_config_channel('auto_join', '0')

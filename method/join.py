@@ -1,7 +1,7 @@
 from gdo.base.GDT import GDT
 from gdo.base.Util import html
 from gdo.core.GDT_Bool import GDT_Bool
-from gdo.irc.GDT_IRCChannel import GDT_IRCChannel
+from gdo.core.GDT_Channel import GDT_Channel
 from gdo.irc.IRCCommand import IRCCommand
 
 
@@ -16,7 +16,7 @@ class join(IRCCommand):
 
     def gdo_parameters(self) -> list[GDT]:
         return [
-            GDT_IRCChannel('channel').not_null(),
+            GDT_Channel('channel').connectors('irc').not_null(),
         ]
 
     @classmethod
@@ -26,8 +26,8 @@ class join(IRCCommand):
         ]
 
     async def gdo_execute(self) -> GDT:
-        name = self.param_val('channel')
-        self.target_irc_channel(name)
+        channel = self.target_irc_channel(self.param_value('channel'))
+        name = channel.get_name()
         self.msg('msg_irc_join_channel', (html(name),))
         await self.irc_connector().send_raw(f"JOIN {name}")
         return self.empty()

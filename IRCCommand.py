@@ -36,20 +36,11 @@ class IRCCommand(Method):
     def irc_channel(self, name: str) -> GDO_Channel:
         return self._env_server.get_or_create_channel(name)
 
-    def target_irc_channel(self, name: str) -> GDO_Channel:
-        """Resolve an explicit IRC channel when invoked through another connector.
-
-        Commands such as ``irc.join #channel`` are also useful from the TCP
-        console.  Their connector must be the channel's IRC server, never the
-        connector that delivered the command.
-        """
-        if isinstance(self._env_server.get_connector(), IRC):
-            return self._env_server.get_or_create_channel(name)
-        channel = GDO_Channel.table().get_by_name(name)
-        if channel and isinstance(channel.get_server().get_connector(), IRC):
-            self.env_server(channel.get_server()).env_channel(channel)
-            return channel
-        raise ValueError(f'Unknown IRC channel: {name}')
+    def target_irc_channel(self, channel: GDO_Channel) -> GDO_Channel:
+        """Select one persisted IRC channel, including its exact server."""
+        if not isinstance(channel.get_server().get_connector(), IRC):
+            raise ValueError(f'Not an IRC channel: {channel.get_name()}')
+        return self.env_server(channel.get_server()).env_channel(channel)
 
     def init_channel(self, param_num: int = 0) -> GDO_Channel:
         self._env_channel = self._env_server.get_or_create_channel(self._irc_params[param_num])
