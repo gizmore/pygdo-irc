@@ -5,5 +5,5 @@ from gdo.irc.IRCCommand import IRCCommand
 class CMD_ERROR(IRCCommand):
 
     def gdo_execute(self) -> GDT:
-        self.irc_connector().disconnected()
+        self.irc_connector().connection_lost()
         return self.empty()

@@ -154,14 +154,18 @@ class IRC(Connector):
         if self._last_ping is None or self._ping_length is None:
             return False
         now = time.monotonic() if now is None else now
-        return now - self._last_ping > self._ping_length
+        # A learned interval is only an estimate.  Scheduling jitter or a
+        # brief busy event loop must not turn the next scheduled server PING
+        # into a false local disconnect.  Two intervals retain detection while
+        # giving the peer one full grace period.
+        return now - self._last_ping > self._ping_length * 2
 
     async def watch_pings(self):
         while self.is_connected() and Application.RUNNING:
             await asyncio.sleep(1)
             if self.ping_timed_out():
                 Logger.warning(f"{self._server.get_name()}: IRC PING timed out")
-                self.disconnected()
+                self.connection_lost()
                 return
 
     #########

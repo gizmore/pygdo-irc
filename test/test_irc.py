@@ -19,6 +19,7 @@ from gdo.irc.IRCUtil import IRCUtil
 from gdo.irc.IRCCommand import IRCCommand
 from gdo.core.GDT_UserType import GDT_UserType
 from gdo.irc.method.CMD_JOIN import CMD_JOIN
+from gdo.irc.method.CMD_353 import CMD_353
 from gdo.irc.method.CMD_PART import CMD_PART
 from gdo.irc.method.CMD_NOTICE import CMD_NOTICE
 from gdo.irc.method.CMD_005 import CMD_005
@@ -246,18 +247,18 @@ class IRCISupportTest(unittest.TestCase):
 
 class IRCReaderTest(unittest.IsolatedAsyncioTestCase):
 
-    async def test_eof_marks_connector_disconnected(self):
-        """A remote EOF must release the server loop for reconnect + auto-join."""
+    async def test_eof_marks_connector_connection_lost(self):
+        """A remote EOF must release the server loop with reconnect backoff."""
         class Connector:
             def __init__(self):
-                self.disconnected_called = False
+                self.connection_lost_called = False
                 self._server = type('Server', (), {'get_name': lambda self: 'test'})()
 
             def is_connected(self):
                 return True
 
-            def disconnected(self):
-                self.disconnected_called = True
+            def connection_lost(self):
+                self.connection_lost_called = True
 
         class Socket:
             async def readline(self):
@@ -268,17 +269,18 @@ class IRCReaderTest(unittest.IsolatedAsyncioTestCase):
         reader.sock = Socket()
         with patch.object(Application, 'RUNNING', True), patch.object(Logger, 'debug'):
             await reader.run_()
-        self.assertTrue(connector.disconnected_called)
+        self.assertTrue(connector.connection_lost_called)
 
 
 class IRCPingTest(unittest.TestCase):
 
-    def test_ping_timeout_after_one_learned_interval(self):
+    def test_ping_timeout_after_two_learned_intervals(self):
         connector = IRC()
         connector.got_ping(100.0)
         connector.got_ping(160.0)
         self.assertFalse(connector.ping_timed_out(220.0))
-        self.assertTrue(connector.ping_timed_out(221.0))
+        self.assertFalse(connector.ping_timed_out(280.0))
+        self.assertTrue(connector.ping_timed_out(281.0))
 
 
 class IRCNickTest(unittest.IsolatedAsyncioTestCase):
@@ -540,6 +542,29 @@ class IRCChannelLifecycleTest(unittest.IsolatedAsyncioTestCase):
         channel.on_user_joined.assert_awaited_once_with(user)
         fun.remember_join.assert_called_once_with(user)
         persist_auto_join.assert_not_called()
+
+    async def test_names_snapshot_enters_the_server_lifecycle(self):
+        server = MagicMock()
+        server.get_or_create_user = AsyncMock()
+        server.get_or_create_channel.return_value = channel = MagicMock()
+        server.on_user_joined = AsyncMock()
+        first, second = MagicMock(), MagicMock()
+        server.get_or_create_user.side_effect = [first, second]
+        channel.on_user_joined = AsyncMock()
+        method = CMD_353()
+        method._env_server = server
+        method._irc_params = ['Dog', '=', '#test', '@first second']
+
+        await method.gdo_execute()
+
+        self.assertEqual(
+            [call(first, channel), call(second, channel)],
+            server.on_user_joined.await_args_list,
+        )
+        self.assertEqual(
+            [call(first), call(second)],
+            channel.on_user_joined.await_args_list,
+        )
 
     async def test_part_and_quit_use_the_matching_bot_lifecycle(self):
         server = MagicMock()
