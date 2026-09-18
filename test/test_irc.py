@@ -23,6 +23,7 @@ from gdo.irc.method.CMD_353 import CMD_353
 from gdo.irc.method.CMD_PART import CMD_PART
 from gdo.irc.method.CMD_NOTICE import CMD_NOTICE
 from gdo.irc.method.CMD_005 import CMD_005
+from gdo.irc.method.CMD_432 import CMD_432
 from gdo.irc.method.CMD_QUIT import CMD_QUIT
 from gdo.irc.method.CMD_PRIVMSG import CMD_PRIVMSG
 from gdo.irc.method.autologin import autologin
@@ -284,6 +285,18 @@ class IRCPingTest(unittest.TestCase):
 
 
 class IRCNickTest(unittest.IsolatedAsyncioTestCase):
+
+    async def test_reserved_nick_uses_the_same_fallback_as_nick_in_use(self):
+        Application.init(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
+        Application.init_cli()
+        connector = MagicMock()
+        connector.send_nick_cmd = AsyncMock()
+        server = MagicMock()
+        server.get_connector.return_value = connector
+
+        await CMD_432().env_server(server).gdo_execute()
+
+        connector.send_nick_cmd.assert_awaited_once()
 
     async def test_permanent_nick_is_persisted_only_after_server_confirmation(self):
         server = MagicMock()

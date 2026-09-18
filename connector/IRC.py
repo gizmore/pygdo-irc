@@ -191,7 +191,7 @@ class IRC(Connector):
             prefix, command, params = self.parse_message(message)
 
             # Until registration there is no server ID for users/channels.
-            if not self._server.is_persisted() and command not in ('001', 'PING', '433', 'ERROR'):
+            if not self._server.is_persisted() and command not in ('001', 'PING', '432', '433', 'ERROR'):
                 return
 
             cmd = self.get_command(command)
