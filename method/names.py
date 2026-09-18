@@ -5,7 +5,7 @@ from gdo.irc.IRCCommand import IRCCommand
 
 
 class names(IRCCommand):
-    """List the member snapshot of a connected IRC channel."""
+    """List the in-memory member snapshot of a connector channel."""
 
     @classmethod
     def gdo_trigger(cls) -> str:
@@ -16,10 +16,13 @@ class names(IRCCommand):
 
     def gdo_parameters(self) -> list[GDT]:
         return [
-            GDT_Channel('channel').connectors('irc').default_current().not_null(),
+            # All connectors maintain the same lightweight channel-member
+            # cache. Telegram populates it when a member sends a message;
+            # IRC additionally keeps it current through JOIN/PART/NAMES.
+            GDT_Channel('channel').default_current().not_null(),
         ]
 
     async def gdo_execute(self) -> GDT:
-        channel = self.target_irc_channel(self.param_value('channel'))
+        channel = self.param_value('channel')
         names = sorted((user.get_name() for user in channel.online_users()), key=str.casefold)
         return self.reply('msg_irc_names', (html(channel.get_name()), html(', '.join(names) or '-')))

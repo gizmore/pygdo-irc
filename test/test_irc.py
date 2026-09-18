@@ -179,7 +179,6 @@ class IRCNamesTest(unittest.IsolatedAsyncioTestCase):
         ]
         method = names()
         method.param_value = MagicMock(return_value=channel)
-        method.target_irc_channel = MagicMock(return_value=channel)
         method.reply = MagicMock(return_value='reply')
 
         self.assertEqual('reply', await method.gdo_execute())
