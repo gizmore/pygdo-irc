@@ -126,6 +126,7 @@ class IRC(Connector):
         reader/writer instances on reconnect; receiving IRC 001 then triggers
         the persisted auto-join channels again.
         """
+        self._server.connection_completed = False
         writer = self._send_thread
         if writer and writer.sock:
             writer.sock.close()

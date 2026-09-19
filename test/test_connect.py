@@ -8,7 +8,10 @@ from gdo.base.Render import Mode
 from gdo.core.method.launch import launch
 from gdo.irc.method.connect import connect
 from gdo.irc.method.CMD_001 import CMD_001
+from gdo.irc.method.CMD_422 import CMD_422
+from gdo.irc.method.CMD_376 import CMD_376
 from gdo.irc.module_irc import module_irc
+from gdo.irc.connector.IRC import IRC
 
 
 class ConnectTest(unittest.IsolatedAsyncioTestCase):
@@ -53,6 +56,39 @@ class ConnectTest(unittest.IsolatedAsyncioTestCase):
         await method.gdo_execute()
         self.assertEqual(['insert', 'user'], order)
         self.assertTrue(connector._registration_complete.is_set())
+
+    async def test_no_motd_completes_connection(self):
+        server = Mock()
+        server.connection_completed = False
+        completed = AsyncMock()
+        Application.EVENTS.subscribe('irc_connection_completed', completed)
+        method = CMD_422()
+        method._env_server = server
+        method.empty = Mock()
+        await method.gdo_execute()
+        self.assertTrue(server.connection_completed)
+        completed.assert_awaited_once_with(server)
+
+    async def test_end_of_motd_completes_connection(self):
+        server = Mock()
+        server.connection_completed = False
+        completed = AsyncMock()
+        Application.EVENTS.subscribe('irc_connection_completed', completed)
+        method = CMD_376()
+        method._env_server = server
+        method.empty = Mock()
+        with patch('gdo.irc.method.CMD_376.motd') as motd:
+            await method.gdo_execute()
+        self.assertTrue(server.connection_completed)
+        completed.assert_awaited_once_with(server)
+        motd.return_value.env_copy.return_value.save_motd.assert_called_once()
+
+    def test_disconnect_clears_connection_completed(self):
+        server = Mock()
+        server.connection_completed = True
+        connector = IRC().server(server)
+        connector.gdo_disconnected()
+        self.assertFalse(server.connection_completed)
 
     def method(self):
         method = connect()
