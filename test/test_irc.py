@@ -207,6 +207,13 @@ class IRCServiceUserTest(unittest.IsolatedAsyncioTestCase):
 
 class IRCNoticeTest(unittest.IsolatedAsyncioTestCase):
 
+    def setUp(self):
+        Application.mode(Mode.render_irc)
+
+    def test_notice_marks_its_transport_kind(self):
+        self.assertFalse(CMD_PRIVMSG().gdo_is_notice())
+        self.assertTrue(CMD_NOTICE().gdo_is_notice())
+
     async def test_non_nickserv_notice_uses_the_privmsg_path(self):
         method = CMD_NOTICE()
         method._irc_prefix = 'tester!ident@host'

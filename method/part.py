@@ -25,10 +25,8 @@ class part(IRCCommand):
         ]
 
     async def gdo_execute(self) -> GDT:
-        channel = self.target_irc_channel(self.param_value('channel'))
+        channel = self.param_value('channel')
         name = channel.get_name()
-
-        # auto_join belongs to the join method's channel configuration.
         join().env_copy(self).env_channel(channel).save_config_channel('auto_join', '0')
         await self.irc_connector().send_raw(f'PART {name}')
         return self.reply('msg_irc_part_channel', (html(name),))

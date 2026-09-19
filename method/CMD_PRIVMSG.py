@@ -13,6 +13,10 @@ from gdo.irc.method.autologin import autologin
 
 class CMD_PRIVMSG(IRCCommand):
 
+    def gdo_is_notice(self) -> bool:
+        """Whether this incoming text used IRC NOTICE rather than PRIVMSG."""
+        return False
+
     @classmethod
     def gdo_method_config_server(cls) -> list[GDT]:
         return [
@@ -36,6 +40,9 @@ class CMD_PRIVMSG(IRCCommand):
         if rec_name.startswith('#'):
             self._env_channel = self.irc_channel(rec_name)
         message = Message(line, Mode.render_irc).env_copy(self)
+        # Keep the IRC transport distinction available to opt-in consumers
+        # after the message has entered the connector-neutral event pipeline.
+        message._mira_notice = self.gdo_is_notice()
         if not self._env_user._authenticated:
             if not await autologin().env_copy(self).maybe_probe(self._env_user, message):
                 pass

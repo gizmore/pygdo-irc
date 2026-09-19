@@ -36,12 +36,6 @@ class IRCCommand(Method):
     def irc_channel(self, name: str) -> GDO_Channel:
         return self._env_server.get_or_create_channel(name)
 
-    def target_irc_channel(self, channel: GDO_Channel) -> GDO_Channel:
-        """Select one persisted IRC channel, including its exact server."""
-        if not isinstance(channel.get_server().get_connector(), IRC):
-            raise ValueError(f'Not an IRC channel: {channel.get_name()}')
-        return self.env_server(channel.get_server()).env_channel(channel)
-
     def init_channel(self, param_num: int = 0) -> GDO_Channel:
         self._env_channel = self._env_server.get_or_create_channel(self._irc_params[param_num])
         return self._env_channel
