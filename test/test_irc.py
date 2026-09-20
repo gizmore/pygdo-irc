@@ -68,6 +68,18 @@ class IRCTLSContextTest(unittest.TestCase):
         self.assertIsNone(self.connector(True).tls_context({'tls': False}))
 
 
+class IRCReplyPrefixTest(unittest.TestCase):
+
+    def test_reply_to_suppresses_automatic_sender_prefix(self):
+        message = Message('test', Mode.render_irc)
+        message.env_reply_to(type('User', (), {'get_id': lambda self: 42})())
+
+        self.assertFalse(message.wants_sender_prefix())
+
+    def test_non_reply_keeps_automatic_sender_prefix(self):
+        self.assertTrue(Message('test', Mode.render_irc).wants_sender_prefix())
+
+
 class IRCWriterTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_queued_chunks_respect_prefix_and_utf8_line_limit(self):
@@ -91,16 +103,20 @@ class IRCWriterTest(unittest.IsolatedAsyncioTestCase):
 
         writer = object.__new__(Writer)
         writer._queue = Queue()
+        server = object()
+        writer._connector = type('Connector', (), {'_server': server})()
         message = Message('test', Mode.render_irc).result(text)
         message._env_server = None
         message._env_user = None
 
         with (
+            patch.object(CMD_PRIVMSG, 'env_server', return_value=CMD_PRIVMSG()) as env_server,
             patch.object(CMD_PRIVMSG, 'get_max_msg_len', return_value=line_limit),
             patch.object(Logger, 'debug'),
         ):
             await writer.write(prefix, message)
 
+        env_server.assert_called_once_with(server)
         self.assertEqual([], sent)
         chunks = [chunk._result for chunk in writer._queue.messages]
         self.assertGreater(len(chunks), 1)
@@ -244,6 +260,9 @@ class IRCISupportTest(unittest.TestCase):
         with patch.object(CMD_PRIVMSG, 'save_config_server') as save:
             method.gdo_execute()
         save.assert_called_once_with('max_msg_len', '512')
+
+    def test_default_line_length_is_rfc_wire_limit(self):
+        self.assertEqual('512', CMD_PRIVMSG.gdo_method_config_server()[0].get_initial())
 
     def test_ignores_malformed_line_length(self):
         method = self.method()

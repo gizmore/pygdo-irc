@@ -20,7 +20,7 @@ class CMD_PRIVMSG(IRCCommand):
     @classmethod
     def gdo_method_config_server(cls) -> list[GDT]:
         return [
-            GDT_UInt('max_msg_len').initial('256'),
+            GDT_UInt('max_msg_len').initial('512'),
             # One reply per second is deliberately conservative for IRC.
             # Operators may adapt both values per server in the method config.
             GDT_Duration('flood_period').not_null().initial('1s').min(0),

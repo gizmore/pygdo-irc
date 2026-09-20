@@ -49,7 +49,10 @@ class IRCWriter(Thread):
     async def write(self, prefix: str, message: Message):
         Logger.debug(f"IRCWriter.write({prefix}{message._result})")
         from gdo.irc.method.CMD_PRIVMSG import CMD_PRIVMSG
-        line_limit = CMD_PRIVMSG().env_copy(message).get_max_msg_len()
+        # The transport owns the server limit.  A reply may originate via
+        # TCP or another connector before being routed here, so its message
+        # environment must not select the wrong IRC server configuration.
+        line_limit = CMD_PRIVMSG().env_server(self._connector._server).get_max_msg_len()
         chunk_size = line_limit - len((prefix + '\r\n').encode('utf-8')) - self.SERVER_PREFIX_RESERVE
         chunks = self.split_utf8_boundary(message._result, chunk_size)
         for chunk in chunks:
