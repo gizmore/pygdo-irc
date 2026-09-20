@@ -35,13 +35,13 @@ class IRCReader(Thread):
                 line = await self.read_irc_line()
                 if line is None:
                     Logger.debug(f"{self.name}: remote IRC connection closed")
-                    self._connector.connection_lost()
+                    self._connector.connection_lost('remote EOF')
                     return
                 if line:
                     await self._connector.process_message(line)
         except (ConnectionError, OSError, UnicodeDecodeError) as ex:
             Logger.exception(ex)
-            self._connector.connection_lost()
+            self._connector.connection_lost(f'reader {type(ex).__name__}: {ex}')
 
     async def read_irc_line(self):
         data = await self.sock.readline()

@@ -1,6 +1,7 @@
 import asyncio
 import ssl
 import time
+import traceback
 
 from gdo.base.Application import Application
 from gdo.base.Exceptions import GDOException, GDOMethodException
@@ -144,6 +145,20 @@ class IRC(Connector):
         self._recv_thread = None
         self._send_thread = None
 
+    def connection_lost(self, reason: str = 'unexpected IRC connection loss'):
+        """Record the originating path before scheduling an IRC reconnect.
+
+        A remote EOF has no exception object, so the generic connector cannot
+        otherwise tell us whether a reconnect came from the reader, writer,
+        server ERROR command or the local ping watchdog.
+        """
+        if not self.is_connected() and not self.is_connecting():
+            return
+        server = self._server.get_name() if self._server else 'unknown server'
+        stack = ''.join(traceback.format_stack(limit=12))
+        Logger.write('exception.log', f'{server}: IRC connection lost: {reason}\n{stack}', False)
+        super().connection_lost()
+
     def got_ping(self, now: float|None=None):
         """Record a server PING and learn its observed keepalive interval."""
         now = time.monotonic() if now is None else now
@@ -166,7 +181,7 @@ class IRC(Connector):
             await asyncio.sleep(1)
             if self.ping_timed_out():
                 Logger.warning(f"{self._server.get_name()}: IRC PING timed out")
-                self.connection_lost()
+                self.connection_lost('IRC PING watchdog timed out')
                 return
 
     #########

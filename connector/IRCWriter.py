@@ -44,7 +44,7 @@ class IRCWriter(Thread):
                     await self.write_now(message._result)
         except Exception as e:
             Logger.exception(e)
-            self._connector.connection_lost()
+            self._connector.connection_lost(f'writer {type(e).__name__}: {e}')
 
     async def write(self, prefix: str, message: Message):
         Logger.debug(f"IRCWriter.write({prefix}{message._result})")
@@ -92,4 +92,4 @@ class IRCWriter(Thread):
             await self.sock.drain()
         except Exception as ex:
             Logger.exception(ex)
-            self._connector.connection_lost()
+            self._connector.connection_lost(f'writer {type(ex).__name__}: {ex}')

@@ -260,13 +260,15 @@ class IRCReaderTest(unittest.IsolatedAsyncioTestCase):
         class Connector:
             def __init__(self):
                 self.connection_lost_called = False
+                self.connection_lost_reason = None
                 self._server = type('Server', (), {'get_name': lambda self: 'test'})()
 
             def is_connected(self):
                 return True
 
-            def connection_lost(self):
+            def connection_lost(self, reason=None):
                 self.connection_lost_called = True
+                self.connection_lost_reason = reason
 
         class Socket:
             async def readline(self):
@@ -278,6 +280,24 @@ class IRCReaderTest(unittest.IsolatedAsyncioTestCase):
         with patch.object(Application, 'RUNNING', True), patch.object(Logger, 'debug'):
             await reader.run_()
         self.assertTrue(connector.connection_lost_called)
+        self.assertEqual('remote EOF', connector.connection_lost_reason)
+
+
+class IRCDisconnectLogTest(unittest.TestCase):
+
+    def test_connection_loss_records_reason_and_call_stack(self):
+        connector = IRC()
+        connector._server = type('Server', (), {'get_name': lambda self: 'test'})()
+        connector._connected = True
+        connector._connecting = False
+        with patch.object(Logger, 'write') as write, patch.object(IRC, 'gdo_disconnected'):
+            connector.connection_lost('remote EOF')
+        path, content, user_log = write.call_args.args
+        self.assertEqual('exception.log', path)
+        self.assertIn('test: IRC connection lost: remote EOF', content)
+        self.assertIn('test_connection_loss_records_reason_and_call_stack', content)
+        self.assertFalse(user_log)
+        self.assertFalse(connector.is_connected())
 
 
 class IRCPingTest(unittest.TestCase):
