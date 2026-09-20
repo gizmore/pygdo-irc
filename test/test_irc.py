@@ -569,10 +569,10 @@ class IRCChannelLifecycleTest(unittest.IsolatedAsyncioTestCase):
     async def test_foreign_join_never_changes_bot_auto_join_configuration(self):
         server = MagicMock()
         server.on_user_joined = AsyncMock()
+        server.on_user_connected = AsyncMock()
         user = self.user(server, 'other')
         channel = MagicMock()
         channel.on_user_joined = AsyncMock()
-        fun = MagicMock()
         method = CMD_JOIN()
         method._irc_prefix = 'other!user@host'
         method._irc_params = ['#one']
@@ -582,13 +582,12 @@ class IRCChannelLifecycleTest(unittest.IsolatedAsyncioTestCase):
             patch.object(CMD_JOIN, 'irc_channel', return_value=channel),
             patch.object(CMD_JOIN, 'is_own_user', return_value=False),
             patch('gdo.irc.method.join.join.on_bot_joined') as persist_auto_join,
-            patch('gdo.fun.module_fun.module_fun.for_irc', return_value=fun),
         ):
             await method.gdo_execute()
 
         server.on_user_joined.assert_awaited_once_with(user, channel)
         channel.on_user_joined.assert_awaited_once_with(user)
-        fun.remember_join.assert_called_once_with(user)
+        server.on_user_connected.assert_awaited_once_with(user)
         persist_auto_join.assert_not_called()
 
     async def test_names_snapshot_enters_the_server_lifecycle(self):
@@ -596,6 +595,7 @@ class IRCChannelLifecycleTest(unittest.IsolatedAsyncioTestCase):
         server.get_or_create_user = AsyncMock()
         server.get_or_create_channel.return_value = channel = MagicMock()
         server.on_user_joined = AsyncMock()
+        server.on_user_connected = AsyncMock()
         first, second = MagicMock(), MagicMock()
         server.get_or_create_user.side_effect = [first, second]
         channel.on_user_joined = AsyncMock()
@@ -613,6 +613,7 @@ class IRCChannelLifecycleTest(unittest.IsolatedAsyncioTestCase):
             [call(first), call(second)],
             channel.on_user_joined.await_args_list,
         )
+        server.on_user_connected.assert_not_awaited()
 
     async def test_part_and_quit_use_the_matching_bot_lifecycle(self):
         server = MagicMock()
@@ -648,20 +649,18 @@ class IRCChannelLifecycleTest(unittest.IsolatedAsyncioTestCase):
     async def test_foreign_quit_records_the_connection_before_removal(self):
         server = MagicMock()
         server.on_user_quit = AsyncMock()
+        server.on_user_disconnected = AsyncMock()
         user = self.user(server, 'other')
-        fun = MagicMock()
-        fun.remember_quit = AsyncMock()
         method = CMD_QUIT()
         method._irc_prefix = 'other!user@host'
 
         with (
             patch.object(CMD_QUIT, 'irc_user', new=AsyncMock(return_value=user)),
             patch.object(CMD_QUIT, 'is_own_user', return_value=False),
-            patch('gdo.fun.module_fun.module_fun.for_irc', return_value=fun),
         ):
             await method.gdo_execute()
 
-        fun.remember_quit.assert_awaited_once_with(user)
+        server.on_user_disconnected.assert_awaited_once_with(user)
         server.on_user_quit.assert_awaited_once_with(user)
 
 
