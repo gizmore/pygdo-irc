@@ -31,6 +31,7 @@ class IRC(Connector):
     _own_nick: str
     _own_user: GDO_User
     _last_ping: float|None
+    _last_activity: float|None
     _ping_length: float|None
     _ping_watchdog: asyncio.Task|None
     _pending_nick: str|None
@@ -44,6 +45,7 @@ class IRC(Connector):
         self._own_nick = 'Dog'
         self._own_user = None
         self._last_ping = None
+        self._last_activity = None
         self._ping_length = None
         self._ping_watchdog = None
         self._pending_nick = None
@@ -87,6 +89,7 @@ class IRC(Connector):
             self._recv_thread = IRCReader(self)
             self._send_thread = IRCWriter(self)
             self._last_ping = None
+            self._last_activity = time.monotonic()
             self._ping_length = None
 
             recv, send = await asyncio.open_connection(
@@ -165,16 +168,21 @@ class IRC(Connector):
         if self._last_ping is not None:
             self._ping_length = now - self._last_ping
         self._last_ping = now
+        self._last_activity = now
+
+    def got_activity(self, now: float|None=None):
+        """Record any inbound IRC line as proof that the peer is alive."""
+        self._last_activity = time.monotonic() if now is None else now
 
     def ping_timed_out(self, now: float|None=None) -> bool:
-        if self._last_ping is None or self._ping_length is None:
+        if self._last_activity is None or self._ping_length is None:
             return False
         now = time.monotonic() if now is None else now
         # A learned interval is only an estimate.  Scheduling jitter or a
         # brief busy event loop must not turn the next scheduled server PING
         # into a false local disconnect.  Two intervals retain detection while
         # giving the peer one full grace period.
-        return now - self._last_ping > self._ping_length * 2
+        return now - self._last_activity > self._ping_length * 2
 
     async def watch_pings(self):
         while self.is_connected() and Application.RUNNING:
@@ -199,6 +207,7 @@ class IRC(Connector):
 
     async def process_message(self, message: str):
         try:
+            self.got_activity()
             Application.tick()
             Application.mode(Mode.render_irc)
 

@@ -310,6 +310,14 @@ class IRCPingTest(unittest.TestCase):
         self.assertFalse(connector.ping_timed_out(280.0))
         self.assertTrue(connector.ping_timed_out(281.0))
 
+    def test_inbound_activity_prevents_ping_watchdog_timeout(self):
+        connector = IRC()
+        connector.got_ping(100.0)
+        connector.got_ping(160.0)
+        connector.got_activity(270.0)
+        self.assertFalse(connector.ping_timed_out(281.0))
+        self.assertTrue(connector.ping_timed_out(391.0))
+
 
 class IRCNickTest(unittest.IsolatedAsyncioTestCase):
 
