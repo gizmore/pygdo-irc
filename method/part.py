@@ -2,7 +2,6 @@ from gdo.base.GDT import GDT
 from gdo.base.Util import html
 from gdo.core.GDT_Channel import GDT_Channel
 from gdo.irc.IRCCommand import IRCCommand
-from gdo.irc.method.join import join
 
 
 class part(IRCCommand):
@@ -27,6 +26,6 @@ class part(IRCCommand):
     async def gdo_execute(self) -> GDT:
         channel = self.param_value('channel')
         name = channel.get_name()
-        join().env_copy(self).env_channel(channel).save_config_channel('auto_join', '0')
+        channel.save_val('chan_autojoin', '0')
         await self.irc_connector().send_raw(f'PART {name}')
         return self.reply('msg_irc_part_channel', (html(name),))

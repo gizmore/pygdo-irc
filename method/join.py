@@ -2,7 +2,6 @@ import regex
 
 from gdo.base.GDT import GDT
 from gdo.base.Util import html
-from gdo.core.GDT_Bool import GDT_Bool
 from gdo.core.GDT_String import GDT_String
 from gdo.irc.IRCCommand import IRCCommand
 
@@ -21,12 +20,6 @@ class join(IRCCommand):
             GDT_String('channel').pattern(r'^#{1,2}[a-z][-_a-z0-9]*$', regex.IGNORECASE).not_null().positional(),
         ]
 
-    @classmethod
-    def gdo_method_config_channel(cls) -> list[GDT]:
-        return [
-            GDT_Bool('auto_join'),
-        ]
-
     async def gdo_execute(self) -> GDT:
         name = self.param_val('channel')
         self.msg('msg_irc_join_channel', (html(name),))
@@ -34,11 +27,10 @@ class join(IRCCommand):
         return self.empty()
 
     def on_bot_joined(self):
-        state = self.get_config_channel_val('auto_join')
-        if state is None:
-            self.save_config_channel('auto_join', '1')
+        self._env_channel.save_val('chan_autojoin', '1')
 
     async def on_connected(self):
-        channels = self.channels_with_setting('auto_join', '1', self._env_server)
-        for channel in channels:
+        for channel in self._env_server.query_channels():
+            if channel.gdo_val('chan_autojoin') != '1':
+                continue
             await self.irc_connector().send_raw(f"JOIN {channel.get_name()}")
