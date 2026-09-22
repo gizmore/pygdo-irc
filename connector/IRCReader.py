@@ -47,4 +47,7 @@ class IRCReader(Thread):
         data = await self.sock.readline()
         if not data:
             return None
-        return data.decode().strip()
+        # IRC servers and legacy clients occasionally emit single-byte
+        # encodings despite advertising UTF-8.  One malformed glyph must not
+        # take the reader (and therefore the whole connection) down.
+        return data.decode('utf-8', errors='ignore').strip()

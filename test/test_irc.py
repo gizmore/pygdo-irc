@@ -274,6 +274,22 @@ class IRCISupportTest(unittest.TestCase):
 
 class IRCReaderTest(unittest.IsolatedAsyncioTestCase):
 
+    async def test_invalid_utf8_byte_is_filtered_without_dropping_the_reader(self):
+        class Connector:
+            def __init__(self):
+                self._server = type('Server', (), {'get_name': lambda self: 'test'})()
+
+        class Socket:
+            async def readline(self):
+                return b':bayern-bazi!user@example PRIVMSG #radio-thirty :Ma\xdferl\r\n'
+
+        reader = IRCReader(Connector())
+        reader.sock = Socket()
+        self.assertEqual(
+            ':bayern-bazi!user@example PRIVMSG #radio-thirty :Maerl',
+            await reader.read_irc_line(),
+        )
+
     async def test_eof_marks_connector_connection_lost(self):
         """A remote EOF must release the server loop with reconnect backoff."""
         class Connector:
