@@ -52,6 +52,29 @@ class IRCAOPTest(GDOTestCase):
         self.assertEqual('error', await method.gdo_execute())
         method.err.assert_called_once_with('err_irc_aop_other_server')
 
+    async def test_aop_allows_normal_channel_and_nick(self):
+        connector = MagicMock()
+        connector.is_connected.return_value = True
+        connector.send_raw = AsyncMock()
+        server = MagicMock()
+        server.get_connector_name.return_value = 'irc'
+        server.get_connector.return_value = connector
+        server.get_id.return_value = 7
+        channel = MagicMock()
+        channel.get_server.return_value = server
+        channel.get_name.return_value = '#wechall'
+        user = MagicMock()
+        user.get_server_id.return_value = 7
+        user.get_name.return_value = 'rayaseiren'
+        method = aop()
+        method.param_value = MagicMock(side_effect=lambda name: {'channel': channel, 'user': user}[name])
+        method.get_ircd_version = MagicMock(return_value='inspircd')
+        method.reply = MagicMock(return_value='ok')
+
+        self.assertEqual('ok', await method.gdo_execute())
+        connector.send_raw.assert_awaited_once_with(
+            'PRIVMSG ChanServ :AOP #wechall ADD rayaseiren')
+
     def test_aop_syntax_uses_atheme_flags_for_solanum_style_ircds(self):
         self.assertEqual(
             'FLAGS #test Alice +O',

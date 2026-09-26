@@ -53,7 +53,7 @@ class aop(IRCCommand):
         username = user.get_name()
         # Both values originate in persisted IRC objects, but reject any old
         # malformed record rather than allowing it to create another IRC line.
-        if any(char.isspace() or char in '\\r\\n\\0:' for char in channel_name + username):
+        if any(char.isspace() or char in '\r\n\0:' for char in channel_name + username):
             return self.err('err_irc_aop_target')
         if not server.get_connector().is_connected():
             return self.err('err_irc_raw_disconnected')
