@@ -5,6 +5,7 @@ from gdo.base.Render import Mode
 from gdo.irc.method.CMD_004 import CMD_004
 from gdo.irc.method.CMD_351 import CMD_351
 from gdo.irc.method.aop import aop
+from gdo.irc.method.nick import nick
 from gdo.irc.method.version import version
 from gdotest.TestUtil import GDOTestCase
 
@@ -86,6 +87,9 @@ class IRCAOPTest(GDOTestCase):
             'AOP #test ADD Alice',
             aop.aop_command('inspircd', '#test', 'Alice'),
         )
+
+    def test_nick_is_declared_as_an_irc_command(self):
+        self.assertEqual('irc', nick().gdo_connectors())
 
 class IRCVersionTest(GDOTestCase):
 
