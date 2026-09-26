@@ -60,6 +60,22 @@ err_irc_connect_failed = "IRC registration failed or timed out."
 msg_irc_connect_success = "Connected to %s (server ID %s) as %s. Try: /msg %s %sping"
 err_irc_raw_line = "Provide one non-empty IRC command without line breaks."
 err_irc_raw_disconnected = "The selected IRC server is not connected."
+
+############
+# IRC AOP  #
+############
+mt_irc_aop = "Add ChanServ AOP"
+md_irc_aop = "Add a known IRC user to a channel's ChanServ AOP list."
+msg_irc_aop_sent = "Requested ChanServ AOP for %s in %s."
+err_irc_aop_other_server = "The selected user belongs to a different IRC server."
+err_irc_aop_target = "The selected IRC channel or user is not safe to send to ChanServ."
+
+################
+# IRC Version  #
+################
+mt_irc_version = "IRC server version"
+md_irc_version = "Request and persist the selected IRC daemon version; startup data is saved automatically."
+msg_irc_version_requested = "Requested IRC daemon version from %s."
 mt_help_urgent = "Request support"
 md_help_urgent = "Send your message privately to all online staff members; no immediate response is guaranteed. Not an emergency service."
 err_help_urgent_text = "Use one non-empty line of at most 500 characters."
