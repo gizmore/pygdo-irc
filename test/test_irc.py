@@ -46,7 +46,7 @@ class IRCPlug:
         connector.process_message(self._msg)
 
 
-class IRCTLSContextTest(unittest.TestCase):
+class IRCTLSContextTest(GDOTestCase):
 
     @staticmethod
     def connector(validate: bool) -> IRC:
@@ -68,7 +68,7 @@ class IRCTLSContextTest(unittest.TestCase):
         self.assertIsNone(self.connector(True).tls_context({'tls': False}))
 
 
-class IRCReplyPrefixTest(unittest.TestCase):
+class IRCReplyPrefixTest(GDOTestCase):
 
     def test_reply_to_suppresses_automatic_sender_prefix(self):
         message = Message('test', Mode.render_irc)
@@ -80,7 +80,7 @@ class IRCReplyPrefixTest(unittest.TestCase):
         self.assertTrue(Message('test', Mode.render_irc).wants_sender_prefix())
 
 
-class IRCWriterTest(unittest.IsolatedAsyncioTestCase):
+class IRCWriterTest(GDOTestCase):
 
     async def test_queued_chunks_respect_prefix_and_utf8_line_limit(self):
         """Chunks preserve content and fit the complete IRC line in UTF-8."""
@@ -128,7 +128,7 @@ class IRCWriterTest(unittest.IsolatedAsyncioTestCase):
         ))
 
 
-class IRCSendQueueTest(unittest.IsolatedAsyncioTestCase):
+class IRCSendQueueTest(GDOTestCase):
 
     async def test_round_robins_waiting_users(self):
         queue = IRCSendQueue(None)
@@ -159,13 +159,13 @@ class IRCSendQueueTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(0, queue._tokens)
 
 
-class IRCUtilTest(unittest.TestCase):
+class IRCUtilTest(GDOTestCase):
 
     def test_strip_owner_prefix(self):
         self.assertEqual('Founder', IRCUtil.strip_permission('~Founder'))
 
 
-class IRCAutoLoginTest(unittest.IsolatedAsyncioTestCase):
+class IRCAutoLoginTest(GDOTestCase):
 
     def setUp(self):
         Application.mode(Mode.render_irc)
@@ -183,7 +183,7 @@ class IRCAutoLoginTest(unittest.IsolatedAsyncioTestCase):
         connector.send_raw.assert_not_awaited()
 
 
-class IRCNamesTest(unittest.IsolatedAsyncioTestCase):
+class IRCNamesTest(GDOTestCase):
 
     def setUp(self):
         Application.mode(Mode.render_irc)
@@ -203,7 +203,7 @@ class IRCNamesTest(unittest.IsolatedAsyncioTestCase):
         method.reply.assert_called_once_with('msg_irc_names', ('#Cyberspace', 'Alpha, zebra'))
 
 
-class IRCServiceUserTest(unittest.IsolatedAsyncioTestCase):
+class IRCServiceUserTest(GDOTestCase):
 
     def setUp(self):
         Application.mode(Mode.render_irc)
@@ -221,7 +221,7 @@ class IRCServiceUserTest(unittest.IsolatedAsyncioTestCase):
         service.save_val.assert_called_once_with('user_type', GDT_UserType.BOT)
 
 
-class IRCNoticeTest(unittest.IsolatedAsyncioTestCase):
+class IRCNoticeTest(GDOTestCase):
 
     def setUp(self):
         Application.mode(Mode.render_irc)
@@ -240,7 +240,7 @@ class IRCNoticeTest(unittest.IsolatedAsyncioTestCase):
         execute.assert_awaited_once()
 
 
-class IRCISupportTest(unittest.TestCase):
+class IRCISupportTest(GDOTestCase):
 
     def setUp(self):
         Application.mode(Mode.render_irc)
@@ -272,7 +272,7 @@ class IRCISupportTest(unittest.TestCase):
         save.assert_not_called()
 
 
-class IRCReaderTest(unittest.IsolatedAsyncioTestCase):
+class IRCReaderTest(GDOTestCase):
 
     async def test_invalid_utf8_byte_is_filtered_without_dropping_the_reader(self):
         class Connector:
@@ -318,7 +318,7 @@ class IRCReaderTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual('remote EOF', connector.connection_lost_reason)
 
 
-class IRCDisconnectLogTest(unittest.TestCase):
+class IRCDisconnectLogTest(GDOTestCase):
 
     def test_connection_loss_records_reason_and_call_stack(self):
         connector = IRC()
@@ -335,7 +335,7 @@ class IRCDisconnectLogTest(unittest.TestCase):
         self.assertFalse(connector.is_connected())
 
 
-class IRCPingTest(unittest.TestCase):
+class IRCPingTest(GDOTestCase):
 
     def test_ping_timeout_after_two_learned_intervals(self):
         connector = IRC()
@@ -354,7 +354,7 @@ class IRCPingTest(unittest.TestCase):
         self.assertTrue(connector.ping_timed_out(391.0))
 
 
-class IRCNickTest(unittest.IsolatedAsyncioTestCase):
+class IRCNickTest(GDOTestCase):
 
     async def test_reserved_nick_uses_the_same_fallback_as_nick_in_use(self):
         Application.init(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
@@ -415,7 +415,7 @@ class IRCNickTest(unittest.IsolatedAsyncioTestCase):
         )
 
 
-class IRCSignupTest(unittest.IsolatedAsyncioTestCase):
+class IRCSignupTest(GDOTestCase):
 
     async def asyncSetUp(self):
         Application.mode(Mode.render_irc)
@@ -557,7 +557,7 @@ class IRCSignupTest(unittest.IsolatedAsyncioTestCase):
         )
 
 
-class IRCChannelLifecycleTest(unittest.IsolatedAsyncioTestCase):
+class IRCChannelLifecycleTest(GDOTestCase):
 
     async def asyncSetUp(self):
         Application.mode(Mode.render_irc)
@@ -702,7 +702,7 @@ class IRCChannelLifecycleTest(unittest.IsolatedAsyncioTestCase):
 class IRCTestCase(GDOTestCase):
     IRC_SERVER: GDO_Server = None
     """
-    For this test you need an IRC server on irc.giz.org:6667
+    The integration probe uses the local Mogwai IRC endpoint.
     """
 
     async def asyncSetUp(self):
@@ -716,12 +716,12 @@ class IRCTestCase(GDOTestCase):
         loader.init_cli()
         if IRCTestCase.IRC_SERVER is None:
             num_servers = GDO_Server.table().count_where()
-            cli_plug(web_gizmore(), f"$add_server wechall_irc_{num_servers + 1} irc ircs://irc.wechall.net:6697")
+            cli_plug(web_gizmore(), f"$add_server mogwai_irc_{num_servers + 1} irc ircs://mogwai.mira-gpt.org:6697")
             IRCTestCase.IRC_SERVER = GDO_Server.table().select().where("serv_connector='irc'").order('serv_created DESC').first().exec().fetch_object()
 
     async def test_01_add_irc_server(self):
         num_servers = GDO_Server.table().count_where()
-        out = cli_plug(web_gizmore(), f"$add_server wechall_irc_{num_servers + 1} irc ircs://irc.wechall.net:6697")
+        out = cli_plug(web_gizmore(), f"$add_server mogwai_irc_{num_servers + 1} irc ircs://mogwai.mira-gpt.org:6697")
         self.assertIn('new irc server', out, "Cannot add IRC server")
         pattern = r'#(\d+)'
         match = re.search(pattern, out)

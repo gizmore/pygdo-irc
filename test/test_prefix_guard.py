@@ -6,9 +6,10 @@ from gdo.base.Events import Events
 from gdo.base.Render import Mode
 from gdo.irc.method.CMD_PRIVMSG import CMD_PRIVMSG
 from gdo.irc.method.CMD_NOTICE import CMD_NOTICE
+from gdotest.TestUtil import GDOTestCase
 
 
-class PrefixGuardTest(unittest.IsolatedAsyncioTestCase):
+class PrefixGuardTest(GDOTestCase):
     async def test_malformed_messages_do_not_resolve_users(self):
         Application.EVENTS = Events()
         Application.mode(Mode.render_irc)

@@ -5,9 +5,10 @@ from gdo.base.Application import Application
 from gdo.base.Events import Events
 from gdo.base.Render import Mode
 from gdo.irc.method.help_urgent import help_urgent
+from gdotest.TestUtil import GDOTestCase
 
 
-class UrgentTest(unittest.IsolatedAsyncioTestCase):
+class UrgentTest(GDOTestCase):
     def test_hidden_but_directly_addressable(self):
         self.assertTrue(self.method.gdo_method_hidden())
         self.assertEqual('urgent', self.method.gdo_trigger())

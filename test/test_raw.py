@@ -5,9 +5,10 @@ from gdo.base.Application import Application
 from gdo.base.Events import Events
 from gdo.base.Render import Mode
 from gdo.irc.method.irc_raw import irc_raw
+from gdotest.TestUtil import GDOTestCase
 
 
-class RawTest(unittest.IsolatedAsyncioTestCase):
+class RawTest(GDOTestCase):
     def setUp(self):
         Application.EVENTS = Events()
         Application.mode(Mode.render_irc)

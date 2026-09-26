@@ -12,9 +12,10 @@ from gdo.irc.method.CMD_422 import CMD_422
 from gdo.irc.method.CMD_376 import CMD_376
 from gdo.irc.module_irc import module_irc
 from gdo.irc.connector.IRC import IRC
+from gdotest.TestUtil import GDOTestCase
 
 
-class ConnectTest(unittest.IsolatedAsyncioTestCase):
+class ConnectTest(GDOTestCase):
     def setUp(self):
         Application.EVENTS = Events()
         Application.mode(Mode.render_irc)
