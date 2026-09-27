@@ -2,7 +2,6 @@ from gdo.base.Application import Application
 from gdo.base.GDT import GDT
 from gdo.base.Message import Message
 from gdo.base.Render import Mode
-from gdo.base.Trans import t
 from gdo.irc.IRCCommand import IRCCommand
 from gdo.irc.method.autologin import autologin
 
