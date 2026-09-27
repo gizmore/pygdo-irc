@@ -170,17 +170,19 @@ class IRCAutoLoginTest(GDOTestCase):
     def setUp(self):
         Application.mode(Mode.render_irc)
 
-    async def test_opted_out_user_is_never_whois_probed(self):
+    async def test_user_is_whois_probed(self):
         method = autologin()
         connector = MagicMock()
         connector.send_raw = AsyncMock()
         method._env_server = MagicMock()
         method._env_server.get_connector.return_value = connector
         user = MagicMock()
-        user.get_setting_value.return_value = False
+        user.get_name_sid.return_value = 'tester'
+        user.get_name.return_value = 'Tester'
+        autologin.PROBES.clear()
 
-        self.assertFalse(await method.maybe_probe(user, MagicMock()))
-        connector.send_raw.assert_not_awaited()
+        self.assertTrue(await method.maybe_probe(user, MagicMock()))
+        connector.send_raw.assert_awaited_once_with('WHOIS Tester')
 
 
 class IRCNamesTest(GDOTestCase):
