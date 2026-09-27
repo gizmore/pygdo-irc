@@ -221,6 +221,21 @@ class IRCServiceUserTest(GDOTestCase):
         service.save_val.assert_called_once_with('user_type', GDT_UserType.BOT)
 
 
+class IRCBotMessageTest(GDOTestCase):
+
+    async def test_ignores_private_messages_from_bots(self):
+        method = CMD_PRIVMSG()
+        method._irc_prefix = 'Internets!bot@rizon'
+        method._irc_params = ['#Cyberspace', 'hello']
+        bot = MagicMock()
+        bot.is_type.return_value = True
+        method.irc_user = AsyncMock(return_value=bot)
+        method.empty = MagicMock(return_value='ignored')
+
+        self.assertEqual('ignored', await method.gdo_execute())
+        method.empty.assert_called_once_with()
+
+
 class IRCNoticeTest(GDOTestCase):
 
     def setUp(self):

@@ -6,6 +6,7 @@ from gdo.base.Message import Message
 from gdo.base.Render import Mode
 from gdo.core.GDO_Session import GDO_Session
 from gdo.core.GDT_UInt import GDT_UInt
+from gdo.core.GDT_UserType import GDT_UserType
 from gdo.date.GDT_Duration import GDT_Duration
 from gdo.irc.IRCCommand import IRCCommand
 from gdo.irc.method.autologin import autologin
@@ -35,6 +36,8 @@ class CMD_PRIVMSG(IRCCommand):
             return self.empty()
         line = self._irc_params[1]
         self._env_user = await self.irc_user(self._irc_prefix)
+        if self._env_user.is_type(GDT_UserType.BOT):
+            return self.empty()
         self._env_session = GDO_Session.for_user(self._env_user)
         rec_name = self._irc_params[0]
         if rec_name.startswith('#'):
