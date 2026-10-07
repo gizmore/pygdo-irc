@@ -14,6 +14,16 @@ from gdo.irc.method.autologin import autologin
 
 class CMD_PRIVMSG(IRCCommand):
 
+    @staticmethod
+    def should_probe_autologin(message: Message) -> bool:
+        """Only authenticate IRC users when they actually invoke a command.
+
+        ``Message.get_trigger()`` resolves a channel trigger when present and
+        otherwise the server trigger, so this also keeps private messages on
+        the server-trigger path.
+        """
+        return message._message.startswith(message.get_trigger())
+
     def gdo_is_notice(self) -> bool:
         """Whether this incoming text used IRC NOTICE rather than PRIVMSG."""
         return False
@@ -46,7 +56,7 @@ class CMD_PRIVMSG(IRCCommand):
         # Keep the IRC transport distinction available to opt-in consumers
         # after the message has entered the connector-neutral event pipeline.
         message._mira_notice = self.gdo_is_notice()
-        if not self._env_user._authenticated:
+        if not self._env_user._authenticated and self.should_probe_autologin(message):
             if not await autologin().env_copy(self).maybe_probe(self._env_user, message):
                 pass
         return message.execute()

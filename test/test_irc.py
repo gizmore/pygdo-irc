@@ -184,6 +184,21 @@ class IRCAutoLoginTest(GDOTestCase):
         self.assertTrue(await method.maybe_probe(user, MagicMock()))
         connector.send_raw.assert_awaited_once_with('WHOIS Tester')
 
+    def test_probes_only_messages_with_the_resolved_trigger(self):
+        message = MagicMock()
+        message.get_trigger.return_value = '$'
+
+        message._message = 'ordinary chat'
+        self.assertFalse(CMD_PRIVMSG.should_probe_autologin(message))
+
+        message._message = '$help'
+        self.assertTrue(CMD_PRIVMSG.should_probe_autologin(message))
+
+        # The caller supplies the channel-resolved trigger through Message.
+        message.get_trigger.return_value = '.'
+        message._message = '.help'
+        self.assertTrue(CMD_PRIVMSG.should_probe_autologin(message))
+
 
 class IRCNamesTest(GDOTestCase):
 
@@ -247,14 +262,18 @@ class IRCNoticeTest(GDOTestCase):
         self.assertFalse(CMD_PRIVMSG().gdo_is_notice())
         self.assertTrue(CMD_NOTICE().gdo_is_notice())
 
-    async def test_non_nickserv_notice_uses_the_privmsg_path(self):
+    async def test_notice_marks_its_sender_as_a_bot(self):
         method = CMD_NOTICE()
         method._irc_prefix = 'tester!ident@host'
         method._irc_params = ['#channel', '$ping']
-        expected = object()
-        with patch.object(CMD_PRIVMSG, 'gdo_execute', new=AsyncMock(return_value=expected)) as execute:
-            self.assertIs(expected, await method.gdo_execute())
-        execute.assert_awaited_once()
+        user = MagicMock()
+        user.get_user_type.return_value = GDT_UserType.MEMBER
+        method.irc_user = AsyncMock(return_value=user)
+        method.empty = MagicMock(return_value='ignored')
+
+        self.assertEqual('ignored', await method.gdo_execute())
+        method.irc_user.assert_awaited_once_with('tester!ident@host')
+        user.save_val.assert_called_once_with('user_type', GDT_UserType.BOT)
 
 
 class IRCISupportTest(GDOTestCase):
