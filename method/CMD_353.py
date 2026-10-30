@@ -16,4 +16,4 @@ class CMD_353(IRCCommand):
             # modules such as Fun never receive a join timestamp for users
             # who were already present when we connected.
             await self._env_server.on_user_joined(user, channel)
-            await channel.on_user_joined(user)
+            await channel.on_user_joined(user, snapshot=True)

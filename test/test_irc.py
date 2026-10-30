@@ -681,7 +681,7 @@ class IRCChannelLifecycleTest(GDOTestCase):
             server.on_user_joined.await_args_list,
         )
         self.assertEqual(
-            [call(first), call(second)],
+            [call(first, snapshot=True), call(second, snapshot=True)],
             channel.on_user_joined.await_args_list,
         )
         server.on_user_connected.assert_not_awaited()
