@@ -48,3 +48,11 @@ The reply reports how many sends were queued; it does not confirm receipt or
 promise an immediate answer. This is not an emergency service.
 Requests are limited to one per user per minute and one per source server every
 ten seconds. With no online staff, the command reports that forwarding is unavailable.
+
+## Ideas
+
+- Explore IRC autojoin; the intended configuration and behavior are still open.
+- Explore `$nolog <text>` for an individual message: Dog would neither log nor
+  process the marked text or forward it to Mira. Other IRC participants,
+  clients and servers could still see or record it. This is a proposal, not
+  an implemented privacy guarantee.
