@@ -50,6 +50,7 @@ class IRC(Connector):
         self._ping_watchdog = None
         self._pending_nick = None
         self._pending_nick_permanent = False
+        self.bot_mode_supported = False
         self._registration_complete = asyncio.Event()
         self._io_tasks = []
 
@@ -77,6 +78,7 @@ class IRC(Connector):
 
     async def gdo_connect(self) -> bool:
         self._registration_complete.clear()
+        self.bot_mode_supported = False
         try:
             url = self._server.get_url()
             host = url['host']

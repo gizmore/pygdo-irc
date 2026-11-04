@@ -12,6 +12,10 @@ class CMD_005(IRCCommand):
     def gdo_execute(self) -> GDT:
         for setting in self._irc_params[1:]:
             key, separator, val = setting.partition('=')
+            if key == 'BOT' and separator and len(val) == 1 and val.isascii() and val.isalpha():
+                self._env_server.get_connector().bot_mode_supported = True
+            elif key == '-BOT' and not separator:
+                self._env_server.get_connector().bot_mode_supported = False
             if key == 'LINELEN' and separator and val.isdecimal():
                 # ISUPPORT advertises the complete IRC wire-line length.  It
                 # is server-specific and therefore belongs in method/server

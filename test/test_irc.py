@@ -170,6 +170,46 @@ class IRCAutoLoginTest(GDOTestCase):
     def setUp(self):
         Application.mode(Mode.render_irc)
 
+    async def test_whois_bot_marks_the_target_user(self):
+        from gdo.core.GDT_UserType import GDT_UserType
+        from gdo.irc.method.CMD_335 import CMD_335
+
+        user = MagicMock()
+        user.get_user_type.return_value = GDT_UserType.MEMBER
+        method = CMD_335()
+        method._env_server = MagicMock()
+        method._env_server.get_connector.return_value.bot_mode_supported = True
+        method._env_server.get_or_create_user = AsyncMock(return_value=user)
+        method._irc_params = ['Dog', 'OtherBot', 'is a bot']
+
+        await method.gdo_execute()
+
+        method._env_server.get_or_create_user.assert_awaited_once_with('OtherBot')
+        user.save_val.assert_called_once_with('user_type', GDT_UserType.BOT)
+
+    async def test_335_without_bot_support_is_ignored(self):
+        from gdo.irc.method.CMD_335 import CMD_335
+
+        method = CMD_335()
+        method._env_server = MagicMock()
+        method._env_server.get_connector.return_value.bot_mode_supported = False
+        method._env_server.get_or_create_user = AsyncMock()
+        method._irc_params = ['Dog', 'OtherBot', 'unrelated reply']
+        await method.gdo_execute()
+        method._env_server.get_or_create_user.assert_not_awaited()
+
+    async def test_malformed_335_is_ignored_even_with_bot_support(self):
+        from gdo.irc.method.CMD_335 import CMD_335
+
+        method = CMD_335()
+        method._env_server = MagicMock()
+        method._env_server.get_connector.return_value.bot_mode_supported = True
+        method._env_server.get_or_create_user = AsyncMock()
+        for params in ([], ['Dog', 'OtherBot'], ['Dog', '', 'is a bot']):
+            method._irc_params = params
+            await method.gdo_execute()
+        method._env_server.get_or_create_user.assert_not_awaited()
+
     async def test_user_is_whois_probed(self):
         method = autologin()
         connector = MagicMock()
@@ -296,6 +336,18 @@ class IRCISupportTest(GDOTestCase):
         with patch.object(CMD_PRIVMSG, 'save_config_server') as save:
             method.gdo_execute()
         save.assert_called_once_with('max_msg_len', '512')
+
+    def test_bot_support_is_set_and_removed_per_connector(self):
+        method = self.method()
+        method._env_server = MagicMock()
+        connector = method._env_server.get_connector.return_value
+        connector.bot_mode_supported = False
+        method._irc_params = ['Dog', 'BOT=B', 'are supported']
+        method.gdo_execute()
+        self.assertTrue(connector.bot_mode_supported)
+        method._irc_params = ['Dog', '-BOT', 'are supported']
+        method.gdo_execute()
+        self.assertFalse(connector.bot_mode_supported)
 
     def test_default_line_length_is_rfc_wire_limit(self):
         self.assertEqual('512', CMD_PRIVMSG.gdo_method_config_server()[0].get_initial())
