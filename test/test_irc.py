@@ -70,14 +70,39 @@ class IRCTLSContextTest(GDOTestCase):
 
 class IRCReplyPrefixTest(GDOTestCase):
 
-    def test_reply_to_suppresses_automatic_sender_prefix(self):
+    def test_reply_to_keeps_automatic_sender_prefix(self):
         message = Message('test', Mode.render_irc)
         message.env_reply_to(type('User', (), {'get_id': lambda self: 42})())
 
-        self.assertFalse(message.wants_sender_prefix())
+        self.assertTrue(message.wants_sender_prefix())
 
     def test_non_reply_keeps_automatic_sender_prefix(self):
         self.assertTrue(Message('test', Mode.render_irc).wants_sender_prefix())
+
+    async def test_channel_reply_addresses_original_user_and_explicit_raw_stays_raw(self):
+        connector = IRC()
+        connector._send_thread = MagicMock()
+        connector._send_thread.write = AsyncMock()
+        channel = MagicMock()
+        channel.get_name.return_value = '#dog'
+        server = MagicMock()
+        sender = MagicMock()
+        sender.get_displayname.return_value = 'mira-gpt'
+        effective = MagicMock()
+        effective.get_displayname.return_value = 'linked-account'
+        message = Message('.sdlook', Mode.render_irc).result('You look around.')
+        message._env_channel = channel
+        message._env_server = server
+        message._env_user = effective
+        message._env_reply_to = sender
+
+        with patch.object(Logger, 'debug'):
+            await connector.gdo_send_to_channel(message)
+            self.assertEqual('PRIVMSG #dog :mira-gpt: ', connector._send_thread.write.await_args.args[0])
+
+            message.no_sender_prefix()
+            await connector.gdo_send_to_channel(message)
+            self.assertEqual('PRIVMSG #dog :', connector._send_thread.write.await_args.args[0])
 
 
 class IRCWriterTest(GDOTestCase):

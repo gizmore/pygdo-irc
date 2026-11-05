@@ -316,7 +316,8 @@ class IRC(Connector):
             for line in text.split('\n'):
                 if line:
                     msg = message.message_copy().result(line)
-                    prefix = f'{message._env_user.get_displayname()}: ' if message.wants_sender_prefix() else ''
+                    sender = message._env_reply_to or message._env_user
+                    prefix = f'{sender.get_displayname()}: ' if sender and message.wants_sender_prefix() else ''
                     Logger.debug(f"{server.get_name()} >> {channel.render_name()} >> {line}")
                     prefix = f'PRIVMSG {channel.get_name()} :{prefix}'
                     await self._send_thread.write(prefix, msg)
