@@ -10,6 +10,9 @@ class CMD_QUIT(IRCCommand):
         if self.is_own_user():
             await self._env_server.on_bot_quit(self._env_user)
         else:
+            from gdo.irc.method.autologin import autologin
+            autologin.invalidate(self._env_user)
+            self._env_user._authenticated = False
             # QUIT is the authoritative end of an IRC connection. Publish it
             # before presence removal so handlers retain the room context.
             await self._env_server.on_user_disconnected(self._env_user)

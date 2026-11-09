@@ -77,6 +77,8 @@ class IRC(Connector):
         return context
 
     async def gdo_connect(self) -> bool:
+        from gdo.irc.method.autologin import autologin
+        autologin.invalidate_server(self._server)
         self._registration_complete.clear()
         self.bot_mode_supported = False
         try:

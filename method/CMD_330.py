@@ -1,7 +1,4 @@
-from gdo.base.Application import Application
 from gdo.base.GDT import GDT
-from gdo.base.Message import Message
-from gdo.base.Render import Mode
 from gdo.irc.IRCCommand import IRCCommand
 from gdo.irc.method.autologin import autologin
 
@@ -9,10 +6,8 @@ from gdo.irc.method.autologin import autologin
 class CMD_330(IRCCommand):
 
     async def gdo_execute(self) -> GDT:
+        if not self._irc_prefix or '!' in self._irc_prefix or len(self._irc_params) < 2:
+            return self.empty()
         user = await self._env_server.get_or_create_user(self._irc_params[1])
-        if not user._authenticated:
-            await user.authenticate(None)
-            original_message = autologin.PROBES[user.get_name_sid()][1]
-#            await self._env_server.send_to_user(user, t('msg_autologin'))
-            Application.MESSAGES.put(Message(original_message._message, Mode.render_irc).env_copy(original_message))
+        await autologin().env_copy(self).confirm_probe(user)
         return self.empty()

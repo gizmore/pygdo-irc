@@ -56,3 +56,14 @@ ten seconds. With no online staff, the command reports that forwarding is unavai
   process the marked text or forward it to Mira. Other IRC participants,
   clients and servers could still see or record it. This is a proposal, not
   an implemented privacy guarantee.
+# euIRC authentication
+
+For an existing WHOIS autologin probe on the configured `euirc` server, numeric
+307 means the nickname is registered; it does not itself authenticate the
+sender. Dog asks NickServ for `STATUS <nick>` and accepts only a matching,
+unexpired response of `3` from `NickServ!services@euirc.net`, addressed to its
+own nick. Status 0, 1 and 2 do not grant access. Pending checks are invalidated
+on nick change, quit or reconnect, and the command replay is discarded if the
+verified user or connection has disappeared. The service host is deliberately
+restricted to the one observed on euIRC; other network formats require separate
+verification.

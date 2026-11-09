@@ -10,6 +10,8 @@ class CMD_NICK(IRCCommand):
         connector = self.irc_connector()
         is_own_nick = old_user.get_name().casefold() == connector._own_nick.casefold()
         new_user = await self.irc_user(nickname)
+        from gdo.irc.method.autologin import autologin
+        autologin.invalidate(old_user)
         old_user._authenticated = False
         channels = self._env_server.get_channels_for_user(old_user)
         await self._env_server.on_user_quit(old_user)

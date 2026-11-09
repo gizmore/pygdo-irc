@@ -20,4 +20,6 @@ class CMD_NOTICE(CMD_PRIVMSG):
         if sender.casefold() == 'nickserv':
             from gdo.irc.method.signup import signup
             await signup().env_copy(self).on_nickserv_notice(self._irc_params[1])
+            from gdo.irc.method.autologin import autologin
+            await autologin().env_copy(self).euirc_status_notice(self._irc_prefix, self._irc_params[0], self._irc_params[1])
         return self.empty()
