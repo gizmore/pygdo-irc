@@ -53,8 +53,7 @@ class CMD_PRIVMSG(IRCCommand):
         if rec_name.startswith('#'):
             self._env_channel = self.irc_channel(rec_name)
         message = Message(line, Mode.render_irc).env_copy(self)
-        if self._env_user._authenticated:
-            message._platform_authenticated = True
+        message._platform_authenticated = bool(self._env_user._authenticated)
         # Keep the IRC transport distinction available to opt-in consumers
         # after the message has entered the connector-neutral event pipeline.
         message._mira_notice = self.gdo_is_notice()

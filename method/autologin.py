@@ -55,7 +55,7 @@ class autologin(Method):
                 pass
             else:
                 return False
-        self.__class__.PROBES[username] = (Application.TIME + 300, original_message)
+        self.__class__.PROBES[username] = (Application.TIME + 300, original_message.message_copy())
         await self._env_server.get_connector().send_raw(f"WHOIS {user.get_name()}")
         return True
 
@@ -91,6 +91,12 @@ class autologin(Method):
         self.EUIRC_STATUS[key] = (min(probe[0], Application.TIME + 30), connector)
         await connector.send_raw(f'PRIVMSG NickServ :STATUS {nickname}')
         return True
+
+    async def identified_nick(self, nickname):
+        if not re.fullmatch(r'[A-Za-z0-9_\-\[\]\\`^{}|]+', nickname):
+            return False
+        user = await self._env_server.get_or_create_user(nickname)
+        return await self.confirm_probe(user)
 
     async def euirc_status_notice(self, prefix, target, text):
         if self._env_server.get_name().casefold() != 'euirc':

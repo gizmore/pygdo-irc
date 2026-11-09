@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from gdo.base.Application import Application
 from gdo.base.Render import Mode
+from gdo.base.Message import Message
 from gdo.irc.method.autologin import autologin
 
 
@@ -86,6 +87,42 @@ class EuIRCAutologinTest(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(queue.put.call_args.args[0]._platform_authenticated)
         self.assertNotIn('gizmore{euirc}', autologin.PROBES)
 
+    async def test_germanleets_307_confirms_identified_pending_probe(self):
+        from gdo.irc.method.CMD_307 import CMD_307
+        self.server.get_name.return_value = 'germanleets'
+        self.user.get_name_sid.return_value = 'gizmore{germanleets}'
+        autologin.PROBES['gizmore{germanleets}'] = (1030, self.original)
+        method = CMD_307()
+        method._env_server = self.server
+        method._env_user = method._env_channel = method._env_session = method._env_reply_to = None
+        method._env_http = False
+        method._env_mode = Mode.render_irc
+        method._irc_prefix = 'Armida.german-elite.net'
+        method._irc_params = ['Mira', 'gizmore', 'is identified for this nick']
+        method.empty = MagicMock()
+        queue = MagicMock()
+        with patch.object(Application, 'TIME', 1000), patch.object(Application, 'MESSAGES', queue):
+            await method.gdo_execute()
+        self.user.authenticate.assert_awaited_once_with(None)
+        self.assertTrue(queue.put.call_args.args[0]._platform_authenticated)
+
+    async def test_germanleets_307_rejects_wrong_text_or_target(self):
+        from gdo.irc.method.CMD_307 import CMD_307
+        self.server.get_name.return_value = 'germanleets'
+        method = CMD_307()
+        method._env_server = self.server
+        method._env_user = method._env_channel = method._env_session = method._env_reply_to = None
+        method._env_http = False
+        method._env_mode = Mode.render_irc
+        method._irc_prefix = 'Armida.german-elite.net'
+        method.empty = MagicMock()
+        for params in (['Mira', 'gizmore', 'is a registered nick'],
+                       ['Other', 'gizmore', 'is identified for this nick'],
+                       ['Mira', 'gizmore']):
+            method._irc_params = params
+            await method.gdo_execute()
+        self.user.authenticate.assert_not_awaited()
+
     async def test_confirmation_rejects_missing_expired_or_foreign_probe(self):
         with patch.object(Application, 'TIME', 1000):
             self.original._env_server = MagicMock()
@@ -96,6 +133,20 @@ class EuIRCAutologinTest(unittest.IsolatedAsyncioTestCase):
             autologin.PROBES.clear()
             self.assertFalse(await self.method.confirm_probe(self.user))
         self.user.authenticate.assert_not_awaited()
+
+    async def test_probe_preserves_origin_when_dispatched_message_changes(self):
+        original = Message('$user.approve example', Mode.render_irc)
+        original._env_server = self.server
+        original._env_user = self.user
+        original._env_session = original._env_reply_to = None
+        autologin.PROBES.clear()
+        queue = MagicMock()
+        with patch.object(Application, 'TIME', 1000), patch.object(Application, 'MESSAGES', queue):
+            self.assertTrue(await self.method.maybe_probe(self.user, original))
+            original._env_user = MagicMock()
+            self.assertTrue(await self.method.confirm_probe(self.user))
+        self.user.authenticate.assert_awaited_once_with(None)
+        self.assertTrue(queue.put.call_args.args[0]._platform_authenticated)
 
     async def test_unidentified_or_access_list_status_never_authenticates(self):
         for status in ('0', '1', '2'):

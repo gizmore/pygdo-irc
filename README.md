@@ -67,3 +67,8 @@ on nick change, quit or reconnect, and the command replay is discarded if the
 verified user or connection has disappeared. The service host is deliberately
 restricted to the one observed on euIRC; other network formats require separate
 verification.
+
+On `germanleets`, a server-origin 307 addressed to Dog with the observed text
+`is identified for this nick` confirms a matching pending WHOIS probe. It uses
+the same expiry, disconnect and guarded command-replay checks as 330. Other
+307 text and other networks are not treated as GermanLeets authentication.
