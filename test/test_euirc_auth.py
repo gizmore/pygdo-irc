@@ -123,6 +123,36 @@ class EuIRCAutologinTest(unittest.IsolatedAsyncioTestCase):
             await method.gdo_execute()
         self.user.authenticate.assert_not_awaited()
 
+    async def test_rizon_307_requires_matching_pending_probe(self):
+        from gdo.irc.method.CMD_307 import CMD_307
+        self.server.get_name.return_value = 'rizon'
+        self.user.get_name_sid.return_value = 'gizmore{rizon}'
+        method = CMD_307()
+        method._env_server = self.server
+        method._env_user = method._env_channel = method._env_session = method._env_reply_to = None
+        method._env_http = False
+        method._env_mode = Mode.render_irc
+        method._irc_prefix = 'irc.mufff.in'
+        method.empty = MagicMock()
+        queue = MagicMock()
+        with patch.object(Application, 'TIME', 1000), patch.object(Application, 'MESSAGES', queue):
+            method._irc_params = ['Mira', 'gizmore', 'has identified for this nick']
+            await method.gdo_execute()  # no pending Rizon probe
+            autologin.PROBES['gizmore{rizon}'] = (1030, self.original)
+            for params in (['Other', 'gizmore', 'has identified for this nick'],
+                           ['Mira', 'gizmore', 'is a registered nick'],
+                           ['Mira', 'gizmore', 'is identified for this nick']):
+                method._irc_params = params
+                await method.gdo_execute()
+            method._irc_prefix = 'attacker!user@host'
+            method._irc_params = ['Mira', 'gizmore', 'has identified for this nick']
+            await method.gdo_execute()
+            self.user.authenticate.assert_not_awaited()
+            method._irc_prefix = 'irc.mufff.in'
+            await method.gdo_execute()
+        self.user.authenticate.assert_awaited_once_with(None)
+        self.assertTrue(queue.put.call_args.args[0]._platform_authenticated)
+
     async def test_confirmation_rejects_missing_expired_or_foreign_probe(self):
         with patch.object(Application, 'TIME', 1000):
             self.original._env_server = MagicMock()

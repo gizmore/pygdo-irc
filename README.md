@@ -72,3 +72,7 @@ On `germanleets`, a server-origin 307 addressed to Dog with the observed text
 `is identified for this nick` confirms a matching pending WHOIS probe. It uses
 the same expiry, disconnect and guarded command-replay checks as 330. Other
 307 text and other networks are not treated as GermanLeets authentication.
+On `rizon`, the same guarded probe handling accepts the observed server reply
+`has identified for this nick`, addressed to Dog. This relies on the IRC
+connection being trustworthy; TLS certificate verification protects against
+an impersonated server and should be enabled for security-sensitive access.
