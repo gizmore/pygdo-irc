@@ -57,7 +57,8 @@ class CMD_PRIVMSG(IRCCommand):
         # Keep the IRC transport distinction available to opt-in consumers
         # after the message has entered the connector-neutral event pipeline.
         message._mira_notice = self.gdo_is_notice()
-        if not self._env_user._authenticated and self.should_probe_autologin(message):
-            if not await autologin().env_copy(self).maybe_probe(self._env_user, message):
-                pass
+        if (self.should_probe_autologin(message) and
+                (not self._env_user._authenticated or self._env_user.get_name_sid() in autologin.PENDING)):
+            await autologin().env_copy(self).maybe_probe(self._env_user, message)
+            return self.empty()
         return message.execute()

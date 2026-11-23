@@ -34,11 +34,118 @@ class EuIRCAutologinTest(unittest.IsolatedAsyncioTestCase):
         self.original._message = '$btx Hello'
         autologin.PROBES.clear()
         autologin.EUIRC_STATUS.clear()
+        autologin.PENDING.clear()
+        self.events_patch = patch.object(Application, 'EVENTS', MagicMock(), create=True)
+        self.events_patch.start()
         autologin.PROBES['gizmore{euirc}'] = (1030, self.original)
 
     def tearDown(self):
         autologin.PROBES.clear()
         autologin.EUIRC_STATUS.clear()
+        autologin.PENDING.clear()
+        self.events_patch.stop()
+
+    def message(self, text):
+        message = Message(text, Mode.render_irc)
+        message._env_server = self.server
+        message._env_user = self.user
+        message._env_session = message._env_reply_to = None
+        return message
+
+    async def test_pending_commands_release_once_in_order_on_success(self):
+        autologin.PROBES.clear()
+        queue = MagicMock()
+        with patch.object(Application, 'TIME', 1000), patch.object(Application, 'MESSAGES', queue):
+            await self.method.maybe_probe(self.user, self.message('$ping'))
+            await self.method.maybe_probe(self.user, self.message('$btx hello'))
+            self.assertEqual(0, queue.put.call_count)
+            self.assertTrue(await self.method.confirm_probe(self.user))
+            timeout = Application.EVENTS.add_timer_async.call_args.args[1]
+            await timeout()
+        self.assertEqual(['$ping', '$btx hello'], [c.args[0]._message for c in queue.put.call_args_list])
+        self.assertTrue(all(c.args[0]._platform_authenticated for c in queue.put.call_args_list))
+        self.connector.send_raw.assert_awaited_once()
+
+    async def test_timeout_releases_once_unauthenticated(self):
+        autologin.PROBES.clear()
+        queue = MagicMock()
+        with patch.object(Application, 'TIME', 1000), patch.object(Application, 'MESSAGES', queue):
+            await self.method.maybe_probe(self.user, self.message('$ping'))
+            timeout = Application.EVENTS.add_timer_async.call_args.args[1]
+            await timeout()
+            await timeout()
+            self.assertFalse(await self.method.confirm_probe(self.user))
+        self.assertEqual(1, queue.put.call_count)
+        self.assertFalse(queue.put.call_args.args[0]._platform_authenticated)
+        self.user.authenticate.assert_not_awaited()
+
+    async def test_disconnect_discards_pending(self):
+        autologin.PROBES.clear()
+        queue = MagicMock()
+        with patch.object(Application, 'TIME', 1000), patch.object(Application, 'MESSAGES', queue):
+            await self.method.maybe_probe(self.user, self.message('$ping'))
+            timeout = Application.EVENTS.add_timer_async.call_args.args[1]
+            autologin.invalidate(self.user)
+            await timeout()
+        queue.put.assert_not_called()
+
+    async def test_failed_status_releases_unauthenticated(self):
+        autologin.PROBES.clear()
+        queue = MagicMock()
+        with patch.object(Application, 'TIME', 1000), patch.object(Application, 'MESSAGES', queue):
+            await self.method.maybe_probe(self.user, self.message('$ping'))
+            await self.method.euirc_registered_nick('gizmore')
+            self.assertFalse(await self.method.euirc_status_notice('NickServ!services@euirc.net', 'Mira', 'STATUS gizmore 0'))
+        self.assertFalse(queue.put.call_args.args[0]._platform_authenticated)
+
+    async def test_whois_send_failure_releases_unauthenticated(self):
+        autologin.PROBES.clear()
+        self.connector.send_raw.side_effect = OSError('disconnected')
+        queue = MagicMock()
+        with patch.object(Application, 'TIME', 1000), patch.object(Application, 'MESSAGES', queue):
+            await self.method.maybe_probe(self.user, self.message('$ping'))
+        self.assertFalse(queue.put.call_args.args[0]._platform_authenticated)
+        self.assertNotIn('gizmore{euirc}', autologin.PENDING)
+
+    async def test_reconnect_before_timeout_discards_pending(self):
+        autologin.PROBES.clear()
+        queue = MagicMock()
+        with patch.object(Application, 'TIME', 1000), patch.object(Application, 'MESSAGES', queue):
+            await self.method.maybe_probe(self.user, self.message('$ping'))
+            self.connector._recv_thread = object()
+            await Application.EVENTS.add_timer_async.call_args.args[1]()
+        queue.put.assert_not_called()
+
+    async def test_pending_queue_is_bounded(self):
+        autologin.PROBES.clear()
+        with patch.object(Application, 'TIME', 1000), patch.object(autologin, 'MAX_PENDING', 1):
+            await self.method.maybe_probe(self.user, self.message('$ping'))
+            extra = self.message('$ping')
+            extra.deliver = AsyncMock()
+            self.assertFalse(await self.method.maybe_probe(self.user, extra))
+            extra.deliver.assert_awaited_once()
+            self.assertIn('too many commands', extra._result)
+
+    async def test_privmsg_does_not_execute_before_probe_finishes(self):
+        from gdo.irc.method.CMD_PRIVMSG import CMD_PRIVMSG
+        method = CMD_PRIVMSG()
+        method._irc_prefix = 'gizmore!user@host'
+        method._irc_params = ['#test', '$ping']
+        method._env_server = self.server
+        method._env_reply_to = None
+        method.irc_user = AsyncMock(return_value=self.user)
+        method.irc_channel = MagicMock(return_value=MagicMock())
+        method.empty = MagicMock(return_value='held')
+        message = MagicMock()
+        message.env_copy.return_value = message
+        with patch('gdo.irc.method.CMD_PRIVMSG.GDO_Session.for_user'), \
+             patch('gdo.irc.method.CMD_PRIVMSG.Message', return_value=message), \
+             patch.object(CMD_PRIVMSG, 'should_probe_autologin', return_value=True), \
+             patch('gdo.irc.method.CMD_PRIVMSG.autologin') as factory:
+            factory.PENDING = {}
+            factory.return_value.env_copy.return_value.maybe_probe = AsyncMock(return_value=True)
+            self.assertEqual('held', await method.gdo_execute())
+        message.execute.assert_not_called()
 
     async def test_307_only_requests_status_not_authentication(self):
         with patch.object(Application, 'TIME', 1000):
