@@ -11,6 +11,9 @@ class irc_raw(Method):
     def gdo_trigger(cls) -> str:
         return 'irc.raw'
 
+    def gdo_method_hidden(self) -> bool:
+        return True
+
     def gdo_user_permission(self) -> str | None:
         return GDO_Permission.ADMIN
 
