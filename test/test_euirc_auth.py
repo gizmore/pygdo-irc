@@ -35,6 +35,7 @@ class EuIRCAutologinTest(unittest.IsolatedAsyncioTestCase):
         autologin.PROBES.clear()
         autologin.EUIRC_STATUS.clear()
         autologin.PENDING.clear()
+        autologin.FAILED_UNTIL.clear()
         self.events_patch = patch.object(Application, 'EVENTS', MagicMock(), create=True)
         self.events_patch.start()
         autologin.PROBES['gizmore{euirc}'] = (1030, self.original)
@@ -43,6 +44,7 @@ class EuIRCAutologinTest(unittest.IsolatedAsyncioTestCase):
         autologin.PROBES.clear()
         autologin.EUIRC_STATUS.clear()
         autologin.PENDING.clear()
+        autologin.FAILED_UNTIL.clear()
         self.events_patch.stop()
 
     def message(self, text):
@@ -78,6 +80,48 @@ class EuIRCAutologinTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(1, queue.put.call_count)
         self.assertFalse(queue.put.call_args.args[0]._platform_authenticated)
         self.user.authenticate.assert_not_awaited()
+        self.assertEqual(1900, autologin.FAILED_UNTIL['gizmore{euirc}'])
+
+    async def test_invalidation_clears_failed_probe_cooldown(self):
+        key = 'gizmore{euirc}'
+        autologin.FAILED_UNTIL[key] = 1900
+        autologin.invalidate(self.user)
+        self.assertNotIn(key, autologin.FAILED_UNTIL)
+        autologin.FAILED_UNTIL[key] = 1900
+        autologin.invalidate_server(self.server)
+        self.assertNotIn(key, autologin.FAILED_UNTIL)
+
+    async def test_end_of_whois_releases_pending_without_waiting_for_timeout(self):
+        from gdo.irc.method.CMD_318 import CMD_318
+        autologin.PROBES.clear()
+        queue = MagicMock()
+        with patch.object(Application, 'TIME', 1000), patch.object(Application, 'MESSAGES', queue):
+            await self.method.maybe_probe(self.user, self.message('$ping'))
+            command = CMD_318()
+            command._env_server = self.server
+            command._irc_prefix = 'irc.example'
+            command._irc_params = ['Mira', 'gizmore', 'End of WHOIS']
+            await command.gdo_execute()
+            timeout = Application.EVENTS.add_timer_async.call_args.args[1]
+            await timeout()
+        self.assertEqual(1, queue.put.call_count)
+        self.assertFalse(queue.put.call_args.args[0]._platform_authenticated)
+        self.user.authenticate.assert_not_awaited()
+
+    async def test_end_of_whois_waits_for_pending_nickserv_status(self):
+        from gdo.irc.method.CMD_318 import CMD_318
+        autologin.PROBES.clear()
+        queue = MagicMock()
+        with patch.object(Application, 'TIME', 1000), patch.object(Application, 'MESSAGES', queue):
+            await self.method.maybe_probe(self.user, self.message('$ping'))
+            await self.method.euirc_registered_nick('gizmore')
+            command = CMD_318()
+            command._env_server = self.server
+            command._irc_prefix = 'irc.example'
+            command._irc_params = ['Mira', 'gizmore', 'End of WHOIS']
+            await command.gdo_execute()
+            queue.put.assert_not_called()
+            self.assertIn('gizmore{euirc}', autologin.PENDING)
 
     async def test_disconnect_discards_pending(self):
         autologin.PROBES.clear()
@@ -146,6 +190,36 @@ class EuIRCAutologinTest(unittest.IsolatedAsyncioTestCase):
             factory.return_value.env_copy.return_value.maybe_probe = AsyncMock(return_value=True)
             self.assertEqual('held', await method.gdo_execute())
         message.execute.assert_not_called()
+
+    async def test_cooldown_skips_probe_until_expiry(self):
+        from gdo.irc.method.CMD_PRIVMSG import CMD_PRIVMSG
+        self.user.is_type.return_value = False
+        method = CMD_PRIVMSG()
+        method._irc_prefix = 'gizmore!user@host'
+        method._irc_params = ['#test', '$ping']
+        method._env_server = self.server
+        method.irc_user = AsyncMock(return_value=self.user)
+        method.irc_channel = MagicMock(return_value=MagicMock())
+        method.empty = MagicMock(return_value='held')
+        message = MagicMock()
+        message.env_copy.return_value = message
+        message.execute.return_value = 'executed'
+        autologin.FAILED_UNTIL['gizmore{euirc}'] = 1900
+        with patch('gdo.irc.method.CMD_PRIVMSG.GDO_Session.for_user'), \
+             patch('gdo.irc.method.CMD_PRIVMSG.Message', return_value=message), \
+             patch.object(CMD_PRIVMSG, 'should_probe_autologin', return_value=True), \
+             patch.object(autologin, 'maybe_probe', new_callable=AsyncMock) as probe, \
+             patch.object(Application, 'TIME', 1899):
+            self.assertEqual('executed', await method.gdo_execute())
+            self.assertFalse(message._platform_authenticated)
+            probe.assert_not_awaited()
+        with patch('gdo.irc.method.CMD_PRIVMSG.GDO_Session.for_user'), \
+             patch('gdo.irc.method.CMD_PRIVMSG.Message', return_value=message), \
+             patch.object(CMD_PRIVMSG, 'should_probe_autologin', return_value=True), \
+             patch.object(autologin, 'maybe_probe', new_callable=AsyncMock) as probe, \
+             patch.object(Application, 'TIME', 1900):
+            self.assertEqual('held', await method.gdo_execute())
+            probe.assert_awaited_once()
 
     async def test_307_only_requests_status_not_authentication(self):
         with patch.object(Application, 'TIME', 1000):

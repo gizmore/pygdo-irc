@@ -30,7 +30,9 @@ class autologin(Method):
     PROBES: dict[str, tuple[float, Message]] = {}
     EUIRC_STATUS: dict[str, tuple[float, object]] = {}
     PENDING: dict[str, dict] = {}
+    FAILED_UNTIL: dict[str, float] = {}
     PROBE_TIMEOUT = 5
+    FAILURE_COOLDOWN = 15 * 60
     MAX_PENDING = 20
 
     @classmethod
@@ -39,11 +41,12 @@ class autologin(Method):
         cls.PROBES.pop(key, None)
         cls.EUIRC_STATUS.pop(key, None)
         cls.PENDING.pop(key, None)
+        cls.FAILED_UNTIL.pop(key, None)
 
     @classmethod
     def invalidate_server(cls, server):
         suffix = '{' + server.get_name().lower() + '}'
-        for collection in (cls.PROBES, cls.EUIRC_STATUS, cls.PENDING):
+        for collection in (cls.PROBES, cls.EUIRC_STATUS, cls.PENDING, cls.FAILED_UNTIL):
             for key in list(collection):
                 if key.lower().endswith(suffix):
                     collection.pop(key, None)
@@ -92,6 +95,10 @@ class autologin(Method):
                 connector._recv_thread is not pending['reader'] or
                 self._env_server._users.get(user.get_name()) is not user):
             return
+        if authenticated:
+            self.FAILED_UNTIL.pop(key, None)
+        else:
+            self.FAILED_UNTIL[key] = Application.TIME + self.FAILURE_COOLDOWN
         for original in pending['messages']:
             replay = VerifiedIRCReplay(original._message, original._env_mode).env_copy(original).guard(
                 self._env_server, user, connector, authenticated)

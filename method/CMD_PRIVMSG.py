@@ -58,7 +58,9 @@ class CMD_PRIVMSG(IRCCommand):
         # after the message has entered the connector-neutral event pipeline.
         message._mira_notice = self.gdo_is_notice()
         if (self.should_probe_autologin(message) and
-                (not self._env_user._authenticated or self._env_user.get_name_sid() in autologin.PENDING)):
+                (not self._env_user._authenticated or self._env_user.get_name_sid() in autologin.PENDING) and
+                (self._env_user.get_name_sid() in autologin.PENDING or
+                 Application.TIME >= autologin.FAILED_UNTIL.get(self._env_user.get_name_sid(), 0))):
             await autologin().env_copy(self).maybe_probe(self._env_user, message)
             return self.empty()
         return message.execute()
